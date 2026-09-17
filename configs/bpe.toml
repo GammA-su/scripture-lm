@@ -1,0 +1,8 @@
+# Scripture-LM BPE Tokenizer Configuration
+# Merged onto base.toml to form the complete Scripture-BPE model configuration.
+
+[tokenizer]
+type = "bpe"
+bpe_vocab_size = 4096
+context_length = 512
+special_tokens = ["<pad>", "<bos>", "<eos>", "<unk>"]

@@ -1,0 +1,17 @@
+# Scripture-LM Corpus Purity Manifest
+# ONLY files listed in this manifest may ever enter the tokenizer or training dataset.
+# The preprocessing pipeline refuses any unregistered input to ensure a strict closed world.
+#
+# Schema for [[documents]]:
+# [[documents]]
+# id = "genesis"
+# family = "hebrew_bible"   # Allowed: "hebrew_bible", "new_testament", "quran"
+# path = "raw/hebrew_bible/genesis.txt"
+# sha256 = "..."
+# license = "public-domain"
+
+version = "1.0"
+name = "core-canon-v1"
+license_policy = "public-domain"
+
+documents = []

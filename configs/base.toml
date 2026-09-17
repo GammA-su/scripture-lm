@@ -1,0 +1,67 @@
+# Scripture-LM Shared Base Configuration
+# Contains tokenizer-independent parameters for model architecture, data, training, generation, and evaluation.
+# Tokenizer configurations are provided by model-specific TOML files (e.g. bpe.toml, char.toml).
+
+[model]
+layers = 6
+d_model = 256
+heads = 8
+mlp_hidden = 704
+rms_eps = 1e-5
+rope_theta = 10000.0
+dropout = 0.10
+attention_dropout = 0.10
+linear_bias = false
+embedding_tying = true
+
+[data]
+sampling_mode = "natural"
+sampling_alpha = 0.5
+
+[training]
+seed = 1337
+learning_rate = 0.0003
+min_learning_rate = 0.00003
+weight_decay = 0.10
+beta1 = 0.9
+beta2 = 0.95
+eps = 1e-8
+gradient_clip = 1.0
+precision = "bf16"
+compile = true
+device = "cuda"
+microbatch_size = 8
+gradient_accumulation_steps = 8
+warmup_ratio = 0.02
+max_effective_epochs = 20
+eval_frequency_per_epoch = 4
+early_stopping_patience = 8
+monitor_metric = "macro_val_bpc"
+
+[generation]
+temperature = 0.8
+top_p = 0.95
+max_new_tokens = 256
+repetition_penalty = 1.0
+stop_on_eos = true
+
+[generation.benchmark]
+samples_per_prompt = 10
+prompts = [
+    "<BOS>",
+    "And the Lord said",
+    "And the prophet spoke unto the people",
+    "Blessed are those who",
+    "Then came a man from",
+    "And behold, there appeared",
+    "For the people had turned away",
+    "And in those days",
+    "Thus was it written",
+]
+fixed_seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+[evaluation]
+calculate_bpc = true
+calculate_perplexity = true
+calculate_memorization = true
+longest_match_thresholds = [50, 100, 200]

@@ -1,0 +1,7 @@
+# Scripture-LM Character Tokenizer Configuration
+# Merged onto base.toml to form the complete Scripture-CHAR model configuration.
+
+[tokenizer]
+type = "character"
+context_length = 2048
+special_tokens = ["<pad>", "<bos>", "<eos>", "<unk>"]

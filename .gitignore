@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+
+# Environments
+.venv/
+env/
+venv/
+
+# Experiment outputs and runs (keep directory structure tracked)
+runs/*
+!runs/.gitkeep
+
+# Tokenizer and model artifacts (keep directory structure tracked)
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/tokenizers/
+!artifacts/tokenizers/.gitkeep
+
+# Data pipelines
+data/encoded/*
+!data/encoded/.gitkeep
+data/normalized/*
+!data/normalized/.gitkeep
+data/splits/*.bin
+data/splits/*.pt
+!data/splits/split_manifest.json
+!data/splits/.gitkeep
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,23 @@
+# Scripture-LM Generation and Benchmark Configuration
+
+[generation]
+temperature = 0.8
+top_p = 0.95
+max_new_tokens = 256
+repetition_penalty = 1.0
+stop_on_eos = true
+
+[generation.benchmark]
+samples_per_prompt = 10
+prompts = [
+    "<BOS>",
+    "And the Lord said",
+    "And the prophet spoke unto the people",
+    "Blessed are those who",
+    "Then came a man from",
+    "And behold, there appeared",
+    "For the people had turned away",
+    "And in those days",
+    "Thus was it written",
+]
+fixed_seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
