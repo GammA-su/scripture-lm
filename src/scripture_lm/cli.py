@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import typer
 from rich.console import Console
@@ -12,6 +12,7 @@ from rich.table import Table
 
 from scripture_lm.config import ScriptureLMConfig, load_config
 from scripture_lm.corpus import (
+    CorpusLock,
     SplitManifest,
     audit_corpus,
     compute_corpus_stats,
@@ -21,7 +22,16 @@ from scripture_lm.corpus import (
     render_audit_report,
     render_stats_table,
 )
+from scripture_lm.data import (
+    calculate_temperature_parameters,
+    encode_dataset,
+    load_chunk_index,
+    simulate_sampling,
+)
 from scripture_lm.tokenization import (
+    BaseTokenizer,
+    BPETokenizer,
+    CharacterTokenizer,
     build_character_tokenizer,
     compute_and_update_tokenizer_stats,
     render_tokenizer_stats,
@@ -275,6 +285,137 @@ def corpus_stats(
     render_stats_table(stats_data)
 
 
+@corpus_app.command(name="sampling-preview")
+def corpus_sampling_preview(
+    sampling_mode: Annotated[
+        str,
+        typer.Option("--sampling-mode", help="Sampling strategy ('natural' or 'temperature')"),
+    ] = "temperature",
+    sampling_alpha: Annotated[
+        float,
+        typer.Option("--sampling-alpha", help="Temperature alpha exponent [0.0, 1.0]"),
+    ] = 0.5,
+    draws: Annotated[
+        int,
+        typer.Option("--draws", help="Number of simulated draws for preview"),
+    ] = 100_000,
+    seed: Annotated[
+        int,
+        typer.Option("--seed", help="Random seed for simulated draws"),
+    ] = 1337,
+    chunks_index: Annotated[
+        Path | None,
+        typer.Option("--chunks-index", help="Optional path to chunks JSON index"),
+    ] = None,
+    split_manifest: Annotated[
+        Path,
+        typer.Option("--split-manifest", help="Path to split_manifest.json"),
+    ] = Path("data/splits/split_manifest.json"),
+    corpus_lock: Annotated[
+        Path,
+        typer.Option("--corpus-lock", help="Path to data/corpus_lock.json"),
+    ] = Path("data/corpus_lock.json"),
+) -> None:
+    """Preview theoretical and simulated family exposure for natural and temperature modes."""
+    # 1. Gather family chunk counts and raw target characters
+    family_chunk_counts: dict[str, int] = {}
+    family_raw_chars: dict[str, int] = {}
+
+    target_chunk_file = chunks_index
+    if target_chunk_file is None:
+        default_bpe = Path("data/encoded/bpe/train_chunks.json")
+        default_char = Path("data/encoded/character/train_chunks.json")
+        if default_bpe.is_file():
+            target_chunk_file = default_bpe
+        elif default_char.is_file():
+            target_chunk_file = default_char
+
+    if target_chunk_file and target_chunk_file.is_file():
+        chunks = load_chunk_index(target_chunk_file)
+        train_chunks = [c for c in chunks if c.split == "train"] or chunks
+        for c in train_chunks:
+            family_chunk_counts[c.family] = family_chunk_counts.get(c.family, 0) + 1
+            family_raw_chars[c.family] = family_raw_chars.get(c.family, 0) + c.raw_character_count
+    else:
+        # Fall back to split_manifest.json and corpus_lock.json
+        if not split_manifest.is_file() or not corpus_lock.is_file():
+            console.print(
+                "[bold red]Cannot run sampling preview:[/] neither encoded chunks nor "
+                f"corpus split files found at {split_manifest} and {corpus_lock}."
+            )
+            raise typer.Exit(code=1)
+
+        split_obj = SplitManifest.model_validate_json(split_manifest.read_text(encoding="utf-8"))
+        lock_obj = CorpusLock.model_validate_json(corpus_lock.read_text(encoding="utf-8"))
+        prov_map = {doc.document_id: doc for doc in lock_obj.documents}
+
+        for doc_id in split_obj.train:
+            fam = prov_map[doc_id].family
+            chars = prov_map[doc_id].normalized_characters
+            family_raw_chars[fam] = family_raw_chars.get(fam, 0) + chars
+            # Approximate chunk count assuming mean context window of ~1500 chars
+            family_chunk_counts[fam] = family_chunk_counts.get(fam, 0) + max(1, round(chars / 1500))
+
+    if not family_raw_chars:
+        console.print("[bold yellow]No training documents or chunks available for preview.[/]")
+        return
+
+    mode = sampling_mode.lower()
+    alpha = float(sampling_alpha)
+
+    if mode == "natural":
+        params = calculate_temperature_parameters(family_chunk_counts, family_raw_chars, alpha=1.0)
+        table = Table(title="Sampling Preview: NATURAL Mode (Single pass without replacement)")
+        table.add_column("Family", style="bold cyan")
+        table.add_column("Natural raw %", justify="right")
+        table.add_column("Target raw %", justify="right")
+        table.add_column("Draw probability", justify="right")
+        table.add_column("Observed draws %", justify="right")
+        table.add_column("Observed raw %", justify="right")
+
+        for fam in sorted(family_raw_chars.keys()):
+            p = params[fam]
+            table.add_row(
+                fam,
+                f"{p['natural_raw_share']:.2%}",
+                f"{p['natural_raw_share']:.2%}",
+                "100% natural",
+                f"{p['natural_raw_share']:.2%}",
+                f"{p['natural_raw_share']:.2%}",
+            )
+        console.print(table)
+        return
+
+    # Temperature mode
+    params = calculate_temperature_parameters(family_chunk_counts, family_raw_chars, alpha=alpha)
+    sim = simulate_sampling(
+        family_chunk_counts, family_raw_chars, alpha=alpha, draws=draws, seed=seed
+    )
+
+    table = Table(
+        title=f"Sampling Preview: TEMPERATURE Mode (alpha={alpha:.2f}, {draws:,} simulated draws)"
+    )
+    table.add_column("Family", style="bold cyan")
+    table.add_column("Natural raw %", justify="right")
+    table.add_column("Target raw %", justify="right")
+    table.add_column("Draw probability", justify="right")
+    table.add_column("Observed draws %", justify="right")
+    table.add_column("Observed raw %", justify="right")
+
+    for fam in sorted(family_raw_chars.keys()):
+        p = params[fam]
+        s = sim[fam]
+        table.add_row(
+            fam,
+            f"{p['natural_raw_share']:.2%}",
+            f"{p['target_exposure_share']:.2%}",
+            f"{p['family_draw_probability']:.2%}",
+            f"{s['observed_draw_pct']:.2%}",
+            f"{s['observed_raw_pct']:.2%}",
+        )
+    console.print(table)
+
+
 # =========================================================================
 # Tokenizer Commands
 # =========================================================================
@@ -438,15 +579,97 @@ def encode(
             help="Tokenizer type to encode with ('bpe', 'char', or 'character')",
         ),
     ] = "bpe",
+    split_manifest: Annotated[
+        Path,
+        typer.Option("--split-manifest", help="Path to split_manifest.json"),
+    ] = Path("data/splits/split_manifest.json"),
+    corpus_lock: Annotated[
+        Path,
+        typer.Option("--corpus-lock", help="Path to data/corpus_lock.json"),
+    ] = Path("data/corpus_lock.json"),
+    normalized_dir: Annotated[
+        Path,
+        typer.Option("--normalized-dir", help="Path to normalized corpus directory"),
+    ] = Path("data/normalized"),
+    output_dir: Annotated[
+        Path,
+        typer.Option("--output-dir", help="Path to output encoded streams"),
+    ] = Path("data/encoded"),
+    tokenizer_dir: Annotated[
+        Path,
+        typer.Option("--tokenizer-dir", help="Path to tokenizer artifacts directory"),
+    ] = Path("artifacts/tokenizers"),
+    context_length: Annotated[
+        int | None,
+        typer.Option("--context-length", help="Optional override for context length L"),
+    ] = None,
 ) -> None:
-    """Encode train/val/test splits into uint16 memory-mapped binary token streams."""
-    norm_tokenizer = "character" if tokenizer in ("char", "character") else "bpe"
+    """Encode train/val/test splits into uint16 memory-mapped binary token streams and chunks."""
+    norm_type: Literal["bpe", "character"] = (
+        "character" if tokenizer.lower() in ("char", "character") else "bpe"
+    )
+
+    console.print(f"[bold cyan]Loading {norm_type.upper()} tokenizer...[/]")
+    try:
+        if norm_type == "bpe":
+            tok_path = tokenizer_dir / "bpe.json"
+            if not tok_path.is_file():
+                console.print(
+                    f"[bold red]BPE tokenizer artifact not found:[/] {tok_path}\n"
+                    "Train BPE first: 'uv run scripture-lm tokenizer train-bpe'."
+                )
+                raise typer.Exit(code=1)
+            tok_instance: BaseTokenizer = BPETokenizer.load(tok_path)
+        else:
+            tok_path = tokenizer_dir / "char_vocab.json"
+            if not tok_path.is_file():
+                console.print(
+                    f"[bold red]Character vocabulary artifact not found:[/] {tok_path}\n"
+                    "Build character vocabulary first: 'uv run scripture-lm tokenizer build-char'."
+                )
+                raise typer.Exit(code=1)
+            tok_instance = CharacterTokenizer.load(tok_path)
+    except typer.Exit:
+        raise
+    except Exception as e:
+        console.print(f"[bold red]Failed to load tokenizer:[/] {e}")
+        raise typer.Exit(code=1) from e
+
+    console.print(f"[bold cyan]Encoding corpus with {norm_type.upper()} tokenizer...[/]")
+    try:
+        chunks_by_split, prov = encode_dataset(
+            tokenizer=tok_instance,
+            split_manifest_path=split_manifest,
+            corpus_lock_path=corpus_lock,
+            normalized_dir=normalized_dir,
+            output_base_dir=output_dir,
+            context_length=context_length,
+        )
+    except Exception as e:
+        console.print(f"[bold red]Encoding failed:[/] {e}")
+        raise typer.Exit(code=1) from e
+
+    # Render summary table
+    table = Table(title=f"Encoded Dataset Summary ({norm_type.upper()})")
+    table.add_column("Split", style="bold cyan")
+    table.add_column("Chunks", justify="right")
+    table.add_column("Target Characters", justify="right")
+
+    for s_name in ["train", "validation", "test"]:
+        s_chunks = chunks_by_split.get(s_name, [])
+        chars = sum(c.raw_character_count for c in s_chunks)
+        table.add_row(s_name, f"{len(s_chunks):,}", f"{chars:,}")
+
+    console.print(table)
     console.print(
         Panel(
-            f"[bold yellow]Encoding Stub[/]\n"
-            f"Will encode splits using {norm_tokenizer} tokenizer into uint16 bin files. "
-            "Implementation will be completed in Prompt 04.",
-            title="Encode Dataset",
+            f"[bold green]Encoding complete![/]\n"
+            f"Context Length L: {prov.context_length} (Window: {prov.chunk_length})\n"
+            f"Natural Training Exposure N: "
+            f"{prov.natural_train_target_characters:,} target characters\n"
+            f"Binary Streams & Chunks: {output_dir / norm_type}",
+            title="Success",
+            border_style="green",
         )
     )
 
