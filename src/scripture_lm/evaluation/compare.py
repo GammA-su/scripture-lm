@@ -148,8 +148,12 @@ def load_run_summary(run_dir: Path | str, split: str = "validation") -> RunSumma
         cfg_dict = tomllib.loads(cfg_file.read_text(encoding="utf-8"))
 
     tok_type = cfg_dict.get("tokenizer", {}).get("type", "unknown")
-    sampling_mode = cfg_dict.get("data", {}).get("strategy", "unknown")
-    sampling_alpha = cfg_dict.get("data", {}).get("temperature_alpha", None)
+    sampling_mode = cfg_dict.get("data", {}).get(
+        "sampling_mode", cfg_dict.get("data", {}).get("strategy", "unknown")
+    )
+    sampling_alpha = cfg_dict.get("data", {}).get(
+        "sampling_alpha", cfg_dict.get("data", {}).get("temperature_alpha")
+    )
     if sampling_mode == "natural":
         sampling_alpha = None
 
@@ -174,6 +178,17 @@ def load_run_summary(run_dir: Path | str, split: str = "validation") -> RunSumma
             training_chars = int(meta.get("cumulative_raw_chars", 0))
             training_tokens = int(meta.get("cumulative_model_tokens", 0))
             param_count = int(meta.get("trainable_parameter_count", 0))
+
+    # Completed training exposure is distinct from best-checkpoint exposure.
+    summary_file = p / "run_summary.json"
+    if summary_file.is_file():
+        training_summary = json.loads(summary_file.read_text(encoding="utf-8"))
+        training_chars = int(training_summary.get("cumulative_raw_chars", training_chars))
+        training_tokens = int(training_summary.get("cumulative_model_tokens", training_tokens))
+    environment_file = p / "environment.json"
+    if environment_file.is_file():
+        environment = json.loads(environment_file.read_text(encoding="utf-8"))
+        param_count = int(environment.get("model_parameters_total", param_count))
 
     # 3. Environment & Split Metadata
     corpus_fp = ""

@@ -84,8 +84,135 @@ uv run scripture-lm config show --config configs/bpe.toml
 uv run scripture-lm config show --config configs/char.toml
 ```
 
-### Phase-01 Training Configuration Check
+### Training Configuration Check
 
 ```powershell
-uv run scripture-lm train --config configs/bpe.toml --sampling-mode temperature --sampling-alpha 0.5
+uv run scripture-lm train --config configs/bpe.toml --sampling-mode temperature --sampling-alpha 0.5 --dry-run
 ```
+
+## Baseline experiments
+
+The four canonical experiments share the same Transformer, seed, optimizer, and
+early-stopping policy:
+
+| Name | Tokenizer | Sampling | Alpha |
+| --- | --- | --- | --- |
+| `bpe-natural` | BPE | natural | — |
+| `bpe-temperature-a05` | BPE | temperature | 0.5 |
+| `char-natural` | character | natural | — |
+| `char-temperature-a05` | character | temperature | 0.5 |
+
+Every baseline explicitly specifies `max_effective_epochs = 20`,
+`early_stopping_enabled = true`, and `early_stopping_patience = 8`.
+An early-stopped baseline is a completed experiment. Natural sampling consumes
+each chunk once per epoch without replacement; temperature sampling uses the
+existing family sampler with replacement.
+
+The versioned recipe lives in `src/scripture_lm/experiments/baseline_v1.toml`.
+Editing user configs does not change what a canonical baseline name means.
+
+```powershell
+# Inspect without creating run files or starting training (no corpus required).
+uv run scripture-lm experiment matrix
+uv run scripture-lm experiment run --name bpe-natural --dry-run
+
+# Run one experiment, a subset, or all four sequentially.
+uv run scripture-lm experiment run --name bpe-natural
+uv run scripture-lm experiment run-baseline --name bpe-natural --name char-natural
+uv run scripture-lm experiment run-baseline
+
+# Resume an interrupted run explicitly; runtime choices may change.
+uv run scripture-lm experiment run --name bpe-natural --resume --device cuda --no-compile
+```
+
+Before executing, populate and register your own corpus, run `corpus prepare`,
+train/build both tokenizers, and encode each tokenizer's dataset. No scripture
+is downloaded automatically. Execution verifies existing data provenance.
+The default directories are `runs/<experiment-name>/`; `--runs-root` selects
+another output root.
+
+Baseline commands accept `--device` and `--compile/--no-compile` but reject
+scientific overrides such as `--effective-epochs`, `--seed`, and
+`--sampling-alpha`. Use `run-custom` instead:
+
+```powershell
+uv run scripture-lm experiment run-custom --tokenizer bpe --sampling-mode temperature --sampling-alpha 0.25 --effective-epochs 20
+uv run scripture-lm experiment run-custom --tokenizer char --sampling-mode natural --effective-epochs 5 --seed 42 --dry-run
+```
+
+Custom names use decimal labels such as `a0`, `a0p25`, `a0p5`, `a0p75`, and `a1`,
+plus `-custom-<config-hash>` to distinguish scientific settings. `--config`
+accepts a custom TOML for architecture and optimizer changes. Repeating the
+same custom specification with `--resume` selects the same directory. Custom
+experiments cannot use reserved baseline names.
+
+Direct training remains available with the same scientific configurations:
+
+```powershell
+uv run scripture-lm train --config configs/bpe.toml --sampling-mode natural --effective-epochs 20
+uv run scripture-lm train --config configs/bpe.toml --sampling-mode temperature --sampling-alpha 0.5 --effective-epochs 20
+uv run scripture-lm train --config configs/char.toml --sampling-mode natural --effective-epochs 20
+uv run scripture-lm train --config configs/char.toml --sampling-mode temperature --sampling-alpha 0.5 --effective-epochs 20
+```
+
+Direct training preserves its existing default directory names (for example,
+`runs/bpe_natural`). Add `--run-dir runs/bpe-natural` to place a canonical run
+where baseline comparison discovers it. Scientific settings are checked when
+using a reserved name. For other direct experiments, choose a distinct
+`--run-dir` rather than overwriting an existing run.
+
+### Identity and execution status
+
+Each new run writes `experiment_config.toml` and `experiment_config.sha256`
+once. The hash covers canonical scientific configuration and encoded-data
+provenance, including corpus, split, and tokenizer identity. Natural sampling
+canonicalizes its irrelevant alpha to JSON null (omitted in TOML).
+`config.toml` preserves the initial complete configuration for existing tools.
+Device and compilation choices are excluded from scientific identity.
+
+`environment.json` records runtime settings and execution history.
+`run_status.json` tracks `planned`, `running`, `interrupted`, `failed`, and
+`completed`, checkpoint references, and exposure progress. Baseline execution:
+
+- Skips compatible completed runs, including runs that stopped early.
+- Starts missing runs.
+- Requires `--resume` and a complete latest checkpoint for interrupted runs.
+- Retains failed runs and reports the failure instead of overwriting them.
+- Rejects changed configurations or provenance in existing run directories.
+
+A hard process termination can leave `running` status. Explicit `--resume`
+recovers from its latest checkpoint after the process has stopped. An OS lock
+prevents two experiment commands from writing the same run concurrently.
+Runs interrupted before their first checkpoint are retained but cannot resume.
+Use a new output root for a fresh attempt. Pre-orchestration runs without
+immutable specifications/status are not automatically adopted or overwritten.
+Runtime changes retain identity but need not reproduce identical floating-point
+results across devices or compilation backends.
+
+### Baseline comparison
+
+```powershell
+uv run scripture-lm experiment compare-baseline
+uv run scripture-lm experiment compare-baseline --generate
+uv run scripture-lm experiment compare-baseline --split test
+```
+
+Comparison evaluates each completed run's best checkpoint on validation by
+default. Use `--split test` explicitly for the frozen final comparison.
+Partial baselines are supported: all four names appear, while missing, failed,
+and interrupted runs have statuses instead of metrics. Corpus/split and
+checkpoint compatibility checks remain mandatory.
+
+Reports are written to `runs/baseline_comparison/comparison.json`,
+`comparison.csv`, and `README.md`; `--output-dir` overrides that destination.
+They include family/macro/micro BPC, token loss/perplexity, exposure, and
+available benchmark metrics, in canonical matrix order without a subjective
+winner. Token perplexity is not comparable across tokenizers.
+
+`--generate` runs the existing `standard_v1` prompt suite and records hashes
+binding samples, repetition, and memorization reports to the checkpoint and
+corpus. Generation metrics require the canonical prompts, seeds 0–9,
+temperature 0.8, top-p 0.95, and 1024-character target. EOS and the suite's token
+cap can end samples earlier. Ad-hoc, stale, incomplete, or incompatible
+generation results appear as unavailable/incompatible. Without `--generate`,
+only existing benchmark artifacts that pass these checks are included.

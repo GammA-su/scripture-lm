@@ -9,12 +9,13 @@ import contextlib
 import datetime
 import json
 import platform
-import shutil
+import random
 import subprocess
 import time
 from pathlib import Path
 from typing import Any, cast
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -28,6 +29,15 @@ from scripture_lm.data.batching import create_dataloader
 from scripture_lm.data.chunk_index import EncodingProvenance, load_chunk_index
 from scripture_lm.data.dataset import ScriptureChunkDataset
 from scripture_lm.data.sampler import NaturalSampler, SequentialSampler, TemperatureSampler
+from scripture_lm.experiments.matrix import config_hash, scientific_config
+from scripture_lm.experiments.storage import (
+    atomic_json,
+    prepare_run,
+    read_status,
+    timestamp,
+    update_status,
+)
+from scripture_lm.experiments.storage import serialize_toml_dict as serialize_toml_dict
 from scripture_lm.model.config import TransformerConfig
 from scripture_lm.model.transformer import TransformerLM
 from scripture_lm.tokenization.base import compute_manifest_sha256
@@ -42,38 +52,6 @@ from scripture_lm.training.optimizer import clip_gradients, configure_optimizer
 from scripture_lm.training.scheduler import ExposureCosineScheduler
 
 console = Console()
-
-
-def serialize_toml_dict(data: dict[str, Any], prefix: str = "") -> str:
-    """Serialize dictionary to standard TOML string without external dependencies."""
-    scalars: list[str] = []
-    tables: list[tuple[str, dict[str, Any]]] = []
-
-    for k, v in data.items():
-        if isinstance(v, dict):
-            sub_key = f"{prefix}.{k}" if prefix else k
-            tables.append((sub_key, v))
-        else:
-            if isinstance(v, bool):
-                val_str = "true" if v else "false"
-            elif isinstance(v, (int, float)):
-                val_str = str(v)
-            elif isinstance(v, str):
-                val_str = f'"{v}"'
-            elif isinstance(v, list):
-                items = [f'"{x}"' if isinstance(x, str) else str(x) for x in v]
-                val_str = f"[{', '.join(items)}]"
-            elif v is None:
-                continue
-            else:
-                val_str = f'"{v}"'
-            scalars.append(f"{k} = {val_str}")
-
-    result = "\n".join(scalars)
-    for table_name, table_dict in tables:
-        result += f"\n\n[{table_name}]\n"
-        result += serialize_toml_dict(table_dict, prefix=table_name)
-    return result.strip() + "\n"
 
 
 def verify_encoding_provenance(
@@ -205,6 +183,27 @@ class Trainer:
         else:
             self.run_dir = Path("runs") / f"{tok_type}_{sampling_mode}"
 
+        self.experiment_spec = prepare_run(
+            self.run_dir,
+            config,
+            self.enc_prov.model_dump(mode="json"),
+            resume=resume_checkpoint_dir is not None,
+        )
+        if resume_checkpoint_dir is None:
+            update_status(self.run_dir, "planned")
+        else:
+            if Path(resume_checkpoint_dir).resolve().parent.parent != self.run_dir.resolve():
+                raise ValueError("Resume checkpoint must belong to this run directory")
+            saved_state = torch.load(
+                Path(resume_checkpoint_dir) / "training_state.pt",
+                map_location="cpu",
+                weights_only=False,
+            )
+            if saved_state.get("experiment_config_hash") != config_hash(self.experiment_spec):
+                raise ValueError("Resume checkpoint experiment provenance mismatch")
+            saved_config = ScriptureLMConfig.model_validate(saved_state["config"])
+            if scientific_config(saved_config) != scientific_config(config):
+                raise ValueError("Resume checkpoint scientific configuration mismatch")
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoints_dir = self.run_dir / "checkpoints"
         self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
@@ -212,6 +211,13 @@ class Trainer:
         self.latest_checkpoint_dir = self.checkpoints_dir / "latest"
         (self.run_dir / "generations").mkdir(parents=True, exist_ok=True)
         (self.run_dir / "evaluation").mkdir(parents=True, exist_ok=True)
+
+        # Re-seed each fresh experiment, independent of earlier matrix runs.
+        random.seed(config.training.seed)
+        np.random.seed(config.training.seed % (2**32))
+        torch.manual_seed(config.training.seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(config.training.seed)
 
         # 3. Setup device
         requested_device = config.training.device
@@ -360,7 +366,7 @@ class Trainer:
         self.best_val_bpc = float("inf")
 
         # Evaluation frequency: 4 times per effective epoch -> every 0.25 * N
-        self.eval_interval_chars = int(round(0.25 * self.N))
+        self.eval_interval_chars = max(1, round(self.N / config.training.eval_frequency_per_epoch))
         self.next_eval_chars = self.eval_interval_chars
 
         # Resume if requested
@@ -373,8 +379,7 @@ class Trainer:
     def _write_run_snapshots(self) -> None:
         """Snapshot all configuration, environment, and provenance files into run directory."""
         # config.toml
-        config_toml_path = self.run_dir / "config.toml"
-        config_toml_path.write_text(serialize_toml_dict(self.config.model_dump()), encoding="utf-8")
+        # Scientific and initial resolved configurations were written once by prepare_run.
 
         # environment.json
         git_commit = "unknown"
@@ -403,6 +408,9 @@ class Trainer:
             "gpu_name": gpu_name,
             "gpu_count": gpu_count,
             "os": platform.platform(),
+            "hostname": platform.node(),
+            "device_requested": self.config.training.device,
+            "device_active": str(self.device),
             "seed": self.config.training.seed,
             "sampling_mode": self.config.data.sampling_mode,
             "sampling_alpha": self.config.data.sampling_alpha,
@@ -418,37 +426,41 @@ class Trainer:
             "split_manifest_hash": self.enc_prov.split_manifest_hash,
             "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
-        (self.run_dir / "environment.json").write_text(
-            json.dumps(env_info, indent=2), encoding="utf-8"
+        environment_path = self.run_dir / "environment.json"
+        previous_environment = (
+            json.loads(environment_path.read_text(encoding="utf-8"))
+            if environment_path.is_file()
+            else {}
         )
+        history = previous_environment.get("execution_history", [])
+        history.append(dict(env_info))
+        env_info["execution_history"] = history
+        atomic_json(environment_path, env_info)
 
-        # corpus_manifest.toml (if present)
-        corpus_manifest_src = self.corpus_root / "corpus_manifest.toml"
-        if corpus_manifest_src.is_file():
-            shutil.copy2(corpus_manifest_src, self.run_dir / "corpus_manifest.toml")
-
-        # corpus_lock.json
-        shutil.copy2(self.data_root / "corpus_lock.json", self.run_dir / "corpus_lock.json")
-
-        # split_manifest.json
-        shutil.copy2(
-            self.data_root / "splits" / "split_manifest.json",
-            self.run_dir / "split_manifest.json",
-        )
-
-        # tokenizer_metadata.json
-        tok_meta_src = (
-            self.artifacts_root / "tokenizers" / f"{self.config.tokenizer.type}_metadata.json"
-        )
-        if tok_meta_src.is_file():
-            shutil.copy2(tok_meta_src, self.run_dir / "tokenizer_metadata.json")
-
-        # encoding_metadata.json
-        enc_meta_src = (
-            self.data_root / "encoded" / self.config.tokenizer.type / "encoding_metadata.json"
-        )
-        if enc_meta_src.is_file():
-            shutil.copy2(enc_meta_src, self.run_dir / "encoding_metadata.json")
+        sources = {
+            "corpus_manifest.toml": self.corpus_root / "corpus_manifest.toml",
+            "corpus_lock.json": self.data_root / "corpus_lock.json",
+            "split_manifest.json": self.data_root / "splits" / "split_manifest.json",
+            "tokenizer_metadata.json": self.artifacts_root
+            / "tokenizers"
+            / f"{self.config.tokenizer.type}_metadata.json",
+            "encoding_metadata.json": self.data_root
+            / "encoded"
+            / self.config.tokenizer.type
+            / "encoding_metadata.json",
+        }
+        artifact = "bpe.json" if self.config.tokenizer.type == "bpe" else "char_vocab.json"
+        sources[artifact] = self.artifacts_root / "tokenizers" / artifact
+        for name, source in sources.items():
+            if source.is_file():
+                # Preserve exact source bytes for provenance hashes (including newlines).
+                destination = self.run_dir / name
+                if destination.exists():
+                    if destination.read_bytes() != source.read_bytes():
+                        raise ValueError(f"Immutable provenance snapshot differs: {destination}")
+                else:
+                    with destination.open("xb") as handle:
+                        handle.write(source.read_bytes())
 
     def _resume(self, checkpoint_dir: Path | str) -> None:
         """Restore all state from an existing checkpoint directory."""
@@ -545,6 +557,48 @@ class Trainer:
         return step_loss, active_lr, grad_norm
 
     def train(self) -> dict[str, Any]:
+        """Track execution status and clean up writers on every exit path."""
+        previous = read_status(self.run_dir)
+        history = previous.get("resume_history", [])
+        if previous["status"] != "planned":
+            history.append({"resumed_at": timestamp(), "previous_status": previous["status"]})
+        update_status(self.run_dir, "running", started_at=timestamp(), resume_history=history)
+        try:
+            summary = self._train()
+        except BaseException as exc:
+            status = "interrupted" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "failed"
+            update_status(
+                self.run_dir,
+                status,
+                error=str(exc),
+                last_checkpoint=(
+                    "checkpoints/latest" if self.latest_checkpoint_dir.is_dir() else None
+                ),
+                effective_epochs_completed=self.cumulative_raw_chars / self.N if self.N else 0,
+            )
+            raise
+        else:
+            update_status(
+                self.run_dir,
+                "completed",
+                completed_at=timestamp(),
+                best_checkpoint=("checkpoints/best" if self.best_checkpoint_dir.is_dir() else None),
+                last_checkpoint="checkpoints/latest",
+                final_raw_exposure=self.cumulative_raw_chars,
+                effective_epochs_completed=summary["effective_epoch"],
+                completion_reason=(
+                    "early_stopping"
+                    if self.config.training.early_stopping_enabled
+                    and self.early_stopping.should_stop
+                    else "exposure_budget"
+                ),
+                error=None,
+            )
+            return summary
+        finally:
+            self.metrics_logger.close()
+
+    def _train(self) -> dict[str, Any]:
         """Execute full training loop until total target exposure or early stopping."""
         console.print(
             f"[bold green]Starting Scripture-LM Training[/]\n"
@@ -569,7 +623,9 @@ class Trainer:
 
         self.raw_model.train()
 
-        while self.cumulative_raw_chars < self.total_target_exposure:
+        while self.cumulative_raw_chars < self.total_target_exposure and not (
+            self.config.training.early_stopping_enabled and self.early_stopping.should_stop
+        ):
             for batch in self.train_loader:
                 self.micro_step += 1
 
@@ -690,6 +746,11 @@ class Trainer:
                         while self.next_eval_chars <= self.cumulative_raw_chars:
                             self.next_eval_chars += self.eval_interval_chars
 
+                        # Update stopping state before serializing the resume checkpoint.
+                        is_best = self.early_stopping.step(val_metrics.macro_val_bpc)
+                        if is_best:
+                            self.best_val_bpc = val_metrics.macro_val_bpc
+
                         # Save latest checkpoint
                         save_checkpoint(
                             checkpoint_dir=self.latest_checkpoint_dir,
@@ -706,12 +767,18 @@ class Trainer:
                             accumulated_targets=accumulated_targets,
                             best_val_bpc=self.best_val_bpc,
                             config_dict=self.config.model_dump(),
+                            experiment_config_hash=config_hash(self.experiment_spec),
+                        )
+
+                        update_status(
+                            self.run_dir,
+                            "running",
+                            last_checkpoint="checkpoints/latest",
+                            effective_epochs_completed=effective_epoch,
                         )
 
                         # Check if new best achieved
-                        is_best = self.early_stopping.step(val_metrics.macro_val_bpc)
                         if is_best:
-                            self.best_val_bpc = val_metrics.macro_val_bpc
                             console.print(
                                 f"  [bold green]New best validation macro BPC: "
                                 f"{self.best_val_bpc:.4f}![/] "
@@ -732,9 +799,13 @@ class Trainer:
                                 accumulated_targets=accumulated_targets,
                                 best_val_bpc=self.best_val_bpc,
                                 config_dict=self.config.model_dump(),
+                                experiment_config_hash=config_hash(self.experiment_spec),
                             )
 
-                        if self.early_stopping.should_stop:
+                        if (
+                            self.config.training.early_stopping_enabled
+                            and self.early_stopping.should_stop
+                        ):
                             console.print(
                                 f"\n[bold red]Early stopping triggered after "
                                 f"{self.early_stopping.patience} "
@@ -747,9 +818,8 @@ class Trainer:
                     break
 
             if (
-                self.early_stopping.should_stop
-                or self.cumulative_raw_chars >= self.total_target_exposure
-            ):
+                self.config.training.early_stopping_enabled and self.early_stopping.should_stop
+            ) or self.cumulative_raw_chars >= self.total_target_exposure:
                 break
 
         # Flush any partial accumulation window remaining upon training completion
@@ -769,6 +839,28 @@ class Trainer:
         total_time = time.time() - start_time
         effective_epoch = self.cumulative_raw_chars / self.N if self.N > 0 else 0.0
 
+        # Always retain a best checkpoint, including a final partial accumulation update.
+        if final_metrics.macro_val_bpc < self.best_val_bpc or not self.best_checkpoint_dir.is_dir():
+            self.best_val_bpc = final_metrics.macro_val_bpc
+            self.early_stopping.best_metric = self.best_val_bpc
+            save_checkpoint(
+                checkpoint_dir=self.best_checkpoint_dir,
+                raw_model=self.raw_model,
+                optimizer=self.optimizer,
+                scheduler=self.scheduler,
+                sampler=self.train_sampler,
+                early_stopping=self.early_stopping,
+                global_step=self.global_step,
+                micro_step=self.micro_step,
+                cumulative_raw_chars=self.cumulative_raw_chars,
+                cumulative_model_tokens=self.cumulative_model_tokens,
+                effective_epoch=effective_epoch,
+                accumulated_targets=0,
+                best_val_bpc=self.best_val_bpc,
+                config_dict=self.config.model_dump(),
+                experiment_config_hash=config_hash(self.experiment_spec),
+            )
+
         # Final checkpoint save
         save_checkpoint(
             checkpoint_dir=self.latest_checkpoint_dir,
@@ -785,6 +877,7 @@ class Trainer:
             accumulated_targets=0,
             best_val_bpc=self.best_val_bpc,
             config_dict=self.config.model_dump(),
+            experiment_config_hash=config_hash(self.experiment_spec),
         )
 
         self.metrics_logger.close()

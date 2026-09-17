@@ -5,6 +5,7 @@ and reproducibility."""
 from __future__ import annotations
 
 import copy
+import json
 import math
 import tempfile
 from pathlib import Path
@@ -863,7 +864,10 @@ def test_training_refuses_wrong_context_length(tmp_path: Path) -> None:
         )
 
 
-def test_run_directory_snapshots(tmp_path: Path) -> None:
+@pytest.mark.parametrize("accumulation_steps", [1, 8])
+def test_run_directory_snapshots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, accumulation_steps: int
+) -> None:
     """Verify Trainer run directory creation snapshots all required metadata files."""
     # Set up valid minimal mock data structure
     lock = make_mock_lock_and_doc("fingerprint_123", "norm_456")
@@ -952,7 +956,7 @@ def test_run_directory_snapshots(tmp_path: Path) -> None:
                 "device": "cpu",
                 "compile": False,
                 "microbatch_size": 1,
-                "gradient_accumulation_steps": 1,
+                "gradient_accumulation_steps": accumulation_steps,
                 "max_effective_epochs": 1,
             },
         }
@@ -987,3 +991,55 @@ def test_run_directory_snapshots(tmp_path: Path) -> None:
     assert (run_dir / "metrics.jsonl").is_file()
     assert (run_dir / "checkpoints" / "latest" / "model.safetensors").is_file()
     assert (run_dir / "run_summary.json").is_file()
+
+    # Scientific snapshots remain byte-identical during an actual checkpoint resume.
+    from scripture_lm.experiments.storage import read_status, update_status
+
+    immutable_names = ("config.toml", "experiment_config.toml", "experiment_config.sha256")
+    original_snapshots = {name: (run_dir / name).read_bytes() for name in immutable_names}
+    assert read_status(run_dir)["status"] == "completed"
+    assert (run_dir / "checkpoints" / "best" / "model.safetensors").is_file()
+    update_status(run_dir, "interrupted")
+    cfg.training.device = "cpu:0"
+    cfg.training.compile = True
+    resumed = Trainer(
+        config=cfg,
+        run_dir=run_dir,
+        data_root=tmp_path / "data",
+        corpus_root=tmp_path / "corpus",
+        artifacts_root=tmp_path / "artifacts",
+        resume_checkpoint_dir=run_dir / "checkpoints" / "latest",
+    )
+    resumed.train()
+    assert {name: (run_dir / name).read_bytes() for name in immutable_names} == original_snapshots
+    resumed_status = read_status(run_dir)
+    assert resumed_status["status"] == "completed"
+    assert len(resumed_status["resume_history"]) == 1
+    environment = json.loads((run_dir / "environment.json").read_text(encoding="utf-8"))
+    assert len(environment["execution_history"]) == 2
+
+    # Exercise reusable evaluation against real tiny-model weights and encoded batches.
+    from scripture_lm.evaluation.runner import evaluate_run
+
+    monkeypatch.chdir(tmp_path)
+    evaluate_run(run_dir, device="cpu", data_root=tmp_path / "data")
+    metrics = json.loads((run_dir / "evaluation" / "validation_metrics.json").read_text("utf-8"))
+    assert math.isfinite(metrics["macro_bpc"])
+    assert metrics["checkpoint_model_sha256"] == compute_file_sha256(
+        run_dir / "checkpoints" / "best" / "model.safetensors"
+    )
+
+    # A checkpoint with the same architecture but different provenance cannot resume.
+    state_path = run_dir / "checkpoints" / "latest" / "training_state.pt"
+    state = torch.load(state_path, weights_only=False)
+    state["experiment_config_hash"] = "other experiment"
+    torch.save(state, state_path)
+    with pytest.raises(ValueError, match="checkpoint experiment provenance mismatch"):
+        Trainer(
+            config=cfg,
+            run_dir=run_dir,
+            data_root=tmp_path / "data",
+            corpus_root=tmp_path / "corpus",
+            artifacts_root=tmp_path / "artifacts",
+            resume_checkpoint_dir=state_path.parent,
+        )

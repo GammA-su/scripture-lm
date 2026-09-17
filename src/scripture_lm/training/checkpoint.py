@@ -35,6 +35,7 @@ def save_checkpoint(
     accumulated_targets: int,
     best_val_bpc: float,
     config_dict: dict[str, Any] | None = None,
+    experiment_config_hash: str | None = None,
 ) -> Path:
     """Save full training checkpoint with safetensors model weights and RNG state.
 
@@ -94,6 +95,7 @@ def save_checkpoint(
             "best_val_bpc": float(best_val_bpc),
             "rng_states": rng_states,
             "config": config_dict or {},
+            "experiment_config_hash": experiment_config_hash,
         }
         torch.save(training_state, tmp_path / "training_state.pt")
 
@@ -105,6 +107,7 @@ def save_checkpoint(
             "cumulative_model_tokens": int(cumulative_model_tokens),
             "effective_epoch": float(effective_epoch),
             "best_val_bpc": float(best_val_bpc),
+            "experiment_config_hash": experiment_config_hash,
             "saved_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         }
         with open(tmp_path / "metadata.json", "w", encoding="utf-8") as f:

@@ -1,6 +1,5 @@
-# Scripture-LM Shared Base Configuration
-# Contains tokenizer-independent parameters for model architecture, data, training, generation, and evaluation.
-# Tokenizer configurations are provided by model-specific TOML files (e.g. bpe.toml, char.toml).
+# Canonical baseline v1 recipe. Independent of user-editable configs/base.toml.
+# Scientific changes require a new experiment identity, not edits to this recipe.
 
 [model]
 layers = 6

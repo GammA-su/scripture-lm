@@ -93,9 +93,10 @@ class TrainingConfig(BaseModel):
     microbatch_size: int = 8
     gradient_accumulation_steps: int = 8
     warmup_ratio: float = 0.02
-    max_effective_epochs: int = 20
-    eval_frequency_per_epoch: int = 4
-    early_stopping_patience: int = 8
+    max_effective_epochs: int = Field(default=20, gt=0)
+    eval_frequency_per_epoch: int = Field(default=4, gt=0)
+    early_stopping_enabled: bool = True
+    early_stopping_patience: int = Field(default=8, gt=0)
     monitor_metric: str = "macro_val_bpc"
 
 
