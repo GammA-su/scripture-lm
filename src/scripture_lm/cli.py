@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
+import tomllib
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+import torch
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+from safetensors.torch import load_model
+from torch.utils.data import SequentialSampler
 
 from scripture_lm.config import ScriptureLMConfig, load_config
 from scripture_lm.corpus import (
@@ -22,12 +28,22 @@ from scripture_lm.corpus import (
     render_audit_report,
     render_stats_table,
 )
+from scripture_lm.corpus.manifest import compute_file_sha256
 from scripture_lm.data import (
     calculate_temperature_parameters,
     encode_dataset,
     load_chunk_index,
     simulate_sampling,
 )
+from scripture_lm.data.batching import create_dataloader
+from scripture_lm.data.dataset import ScriptureChunkDataset
+from scripture_lm.evaluation import (
+    compare_runs,
+    compute_bpc,
+    compute_perplexity,
+    render_comparison_table,
+)
+from scripture_lm.model import TransformerConfig, TransformerLM
 from scripture_lm.tokenization import (
     BaseTokenizer,
     BPETokenizer,
@@ -731,8 +747,29 @@ def train(
             help="Maximum effective epochs",
         ),
     ] = None,
+    run_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--run-dir",
+            help="Destination run directory for logs, checkpoints, and metadata",
+        ),
+    ] = None,
+    resume: Annotated[
+        Path | None,
+        typer.Option(
+            "--resume",
+            help="Path to checkpoint directory to resume training from",
+        ),
+    ] = None,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help="Validate configuration and data provenance without training",
+        ),
+    ] = False,
 ) -> None:
-    """Train a Scripture-LM model. (Phase 01 resolves and verifies configuration)."""
+    """Train a Scripture-LM language model."""
     # Assemble CLI overrides
     overrides: dict[str, Any] = {}
     if sampling_mode is not None:
@@ -756,15 +793,39 @@ def train(
 
     display_config_table(resolved_config, title=f"Training Configuration ({config or 'default'})")
 
-    console.print(
-        Panel(
-            "[bold green]Configuration successfully validated![/]\n"
-            "[bold yellow]Note:[/] Training backend will be implemented in Prompt 06. "
-            "In Phase 01, configuration loading and constraints are verified.",
-            title="Phase 01 Verification",
-            border_style="cyan",
+    if dry_run:
+        console.print(
+            Panel(
+                "[bold green]Configuration successfully validated![/]\n"
+                "[dim]Dry run complete; training was not started.[/]",
+                title="Dry Run Verification",
+                border_style="cyan",
+            )
         )
-    )
+        return
+
+    # Check for encoded dataset before starting
+    tok_type = resolved_config.tokenizer.type
+    encoding_meta_file = Path("data/encoded") / tok_type / "encoding_metadata.json"
+    if not encoding_meta_file.is_file():
+        console.print(
+            f"[bold red]ERROR: encoded {tok_type.upper()} dataset not found.[/]\n"
+            f"Run:\n  uv run scripture-lm encode --tokenizer {tok_type}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        from scripture_lm.training.trainer import Trainer
+
+        trainer = Trainer(
+            config=resolved_config,
+            run_dir=run_dir,
+            resume_checkpoint_dir=resume,
+        )
+        trainer.train()
+    except Exception as e:
+        console.print(f"[bold red]Training error:[/] {e}")
+        raise typer.Exit(code=1) from e
 
 
 # =========================================================================
@@ -793,7 +854,7 @@ def generate(
             f"Checkpoint: {checkpoint}\n"
             f"Prompt: {prompt}\n"
             f"Temp: {temperature}, Top-p: {top_p}, Seed: {seed}\n"
-            "Implementation will be completed in Prompt 07.",
+            "Implementation will be completed in Prompt 08.",
             title="Generate Text",
         )
     )
@@ -808,34 +869,282 @@ def generate(
 def evaluate(
     run: Annotated[
         Path,
-        typer.Option("--run", help="Path to experiment run directory"),
+        typer.Option("--run", "-r", help="Path to experiment run directory"),
     ] = Path("runs/bpe"),
+    split: Annotated[
+        str,
+        typer.Option("--split", "-s", help="Evaluation split ('validation' or 'test')"),
+    ] = "validation",
+    checkpoint: Annotated[
+        str,
+        typer.Option(
+            "--checkpoint",
+            "-c",
+            help="Checkpoint to evaluate ('best', 'latest', or directory path)",
+        ),
+    ] = "best",
+    device: Annotated[
+        str | None,
+        typer.Option("--device", help="Compute device ('cuda', 'cpu')"),
+    ] = None,
+    generate: Annotated[
+        bool,
+        typer.Option(
+            "--generate/--no-generate", help="Run generation suite and memorization analysis"
+        ),
+    ] = False,
+    data_root: Annotated[
+        Path,
+        typer.Option("--data-root", help="Path to data directory"),
+    ] = Path("data"),
 ) -> None:
-    """Evaluate test BPC, perplexity, and memorization on an experiment run."""
-    console.print(
-        Panel(
-            f"[bold yellow]Evaluation Stub[/]\n"
-            f"Run: {run}\n"
-            "Will evaluate BPC and memorization in Prompt 08.",
-            title="Evaluate Run",
+    """Evaluate a trained model checkpoint on held-out data (BPC and perplexity)."""
+    if not run.is_dir():
+        console.print(f"[bold red]Run directory not found:[/] {run}")
+        raise typer.Exit(code=1)
+
+    # 1. Load config
+    cfg_file = run / "config.toml"
+    if not cfg_file.is_file():
+        console.print(f"[bold red]Missing config.toml in run directory:[/] {cfg_file}")
+        raise typer.Exit(code=1)
+
+    cfg_dict = tomllib.loads(cfg_file.read_text(encoding="utf-8"))
+    config = ScriptureLMConfig.model_validate(cfg_dict)
+    tok_type = config.tokenizer.type
+
+    # 2. Resolve checkpoint path
+    if checkpoint in ("best", "latest"):
+        ckpt_dir = run / "checkpoints" / checkpoint
+    else:
+        ckpt_dir = Path(checkpoint)
+
+    model_file = ckpt_dir / "model.safetensors"
+    if not model_file.is_file():
+        console.print(f"[bold red]Model checkpoint not found:[/] {model_file}")
+        raise typer.Exit(code=1)
+
+    model_sha256 = compute_file_sha256(model_file)
+
+    # 3. Determine device and precision autocast
+    if device is not None:
+        target_device = torch.device(device)
+    else:
+        target_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    autocast_ctx: Any = contextlib.nullcontext()
+    if target_device.type == "cuda":
+        if config.training.precision == "bf16" and torch.cuda.is_bf16_supported():
+            autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.bfloat16)
+        elif config.training.precision == "fp16":
+            autocast_ctx = torch.autocast(device_type="cuda", dtype=torch.float16)
+
+    # 4. Instantiate model and load weights
+    console.print(f"[cyan]Loading model weights from {model_file}...[/]")
+    vocab_size = 0
+    if (run / "tokenizer_metadata.json").is_file():
+        tok_m = json.loads((run / "tokenizer_metadata.json").read_text(encoding="utf-8"))
+        vocab_size = int(tok_m.get("vocab_size", 0))
+    elif (Path("artifacts/tokenizers") / f"{tok_type}_metadata.json").is_file():
+        tok_m = json.loads(
+            (Path("artifacts/tokenizers") / f"{tok_type}_metadata.json").read_text(encoding="utf-8")
         )
+        vocab_size = int(tok_m.get("vocab_size", 0))
+
+    if vocab_size <= 0:
+        if tok_type == "bpe":
+            vocab_size = int(getattr(config.tokenizer, "bpe_vocab_size", 4096))
+        else:
+            from safetensors import safe_open
+
+            with safe_open(str(model_file), framework="pt") as f:
+                vocab_size = int(f.get_slice("tok_embeddings.weight").get_shape()[0])
+
+    model_cfg = TransformerConfig.from_app_config(config, vocab_size=vocab_size)
+    model = TransformerLM(model_cfg)
+    load_model(model, str(model_file))
+    model.to(target_device)
+    model.eval()
+
+    # 5. Load dataset chunks for requested split
+    encoded_dir = data_root / "encoded" / tok_type
+    chunk_file = encoded_dir / f"{split}_chunks.json"
+    if not chunk_file.is_file():
+        console.print(
+            f"[bold red]Encoded chunks not found for split '{split}': {chunk_file}[/]\n"
+            f"Please run `scripture-lm encode` first."
+        )
+        raise typer.Exit(code=1)
+
+    chunks = load_chunk_index(chunk_file)
+    if not chunks:
+        console.print(f"[bold red]Split '{split}' contains 0 chunks in {chunk_file}[/]")
+        raise typer.Exit(code=1)
+
+    dataset = ScriptureChunkDataset(
+        chunks,
+        base_dir=data_root / "encoded",
+        context_length=config.tokenizer.context_length,
     )
+    dataloader = create_dataloader(
+        dataset,
+        sampler=SequentialSampler(dataset),
+        batch_size=config.training.microbatch_size,
+        drop_last=False,
+    )
+
+    console.print(
+        f"[cyan]Evaluating {len(chunks):,} chunks ({split} split, {tok_type.upper()} tokenizer) "
+        f"on {target_device}...[/]"
+    )
+
+    # 6. Compute evaluation metrics
+    bpc_res = compute_bpc(model, dataloader, target_device, autocast_context=autocast_ctx)
+    ppl_res = compute_perplexity(model, dataloader, target_device, autocast_context=autocast_ctx)
+
+    # 7. Collect Provenance Metadata
+    corpus_fp = ""
+    norm_fp = ""
+    split_hash = ""
+    tok_hash = ""
+
+    lock_path = run / "corpus_lock.json"
+    if not lock_path.is_file():
+        lock_path = data_root / "corpus_lock.json"
+    if lock_path.is_file():
+        lock_data = json.loads(lock_path.read_text(encoding="utf-8"))
+        corpus_fp = lock_data.get("corpus_fingerprint", "")
+        norm_fp = lock_data.get("normalization_fingerprint", "")
+
+    split_path = run / "split_manifest.json"
+    if not split_path.is_file():
+        split_path = data_root / "splits" / "split_manifest.json"
+    if split_path.is_file():
+        split_hash = compute_file_sha256(split_path)
+
+    tok_meta_path = run / "tokenizer_metadata.json"
+    if not tok_meta_path.is_file():
+        tok_meta_path = Path("artifacts/tokenizers") / f"{tok_type}_metadata.json"
+    if tok_meta_path.is_file():
+        tok_meta = json.loads(tok_meta_path.read_text(encoding="utf-8"))
+        tok_hash = tok_meta.get("tokenizer_artifact_sha256", "")
+
+    # 8. Save JSON Report
+    eval_dir = run / "evaluation"
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    report_file = eval_dir / f"{split}_metrics.json"
+
+    eval_report = {
+        "evaluation_schema_version": "1.0",
+        "evaluation_algorithm_version": "evaluation_v1",
+        "split": split,
+        "checkpoint": checkpoint,
+        "checkpoint_model_sha256": model_sha256,
+        "corpus_fingerprint": corpus_fp,
+        "normalization_fingerprint": norm_fp,
+        "split_manifest_hash": split_hash,
+        "tokenizer_artifact_sha256": tok_hash,
+        "evaluated_characters": bpc_res.total_characters,
+        "evaluated_chunks": len(chunks),
+        "macro_bpc": bpc_res.macro_bpc,
+        "micro_bpc": bpc_res.micro_bpc,
+        "family_bpc": bpc_res.family_bpc,
+        "total_bits": bpc_res.total_bits,
+        "total_non_special_tokens": bpc_res.total_non_special_tokens,
+        "token_cross_entropy": ppl_res.cross_entropy_per_token,
+        "token_perplexity": ppl_res.perplexity,
+        "family_token_perplexity": ppl_res.family_perplexity,
+        "total_valid_targets": ppl_res.total_valid_targets,
+    }
+
+    report_file.write_text(json.dumps(eval_report, indent=2), encoding="utf-8")
+    console.print(f"[green]Saved evaluation report to {report_file}[/]")
+
+    if generate:
+        console.print(
+            "[yellow]Note: Canonical generation engine and KV cache arrive in Prompt 08.\n"
+            "Pre-existing samples in generations/samples.json will be analyzed if present.[/yellow]"
+        )
+
+    # 9. Render Summary Table
+    table = Table(title=f"Evaluation Results: {run.name} ({split.title()} Split)")
+    table.add_column("Metric", style="bold yellow")
+    table.add_column("Value", style="bold green")
+
+    table.add_row("Macro BPC (cross-tokenizer)", f"{bpc_res.macro_bpc:.4f}")
+    table.add_row("Micro BPC", f"{bpc_res.micro_bpc:.4f}")
+    for fam, bpc in bpc_res.family_bpc.items():
+        table.add_row(f"  {fam} BPC", f"{bpc:.4f}")
+    table.add_row("Token Perplexity", f"{ppl_res.perplexity:.2f}")
+    table.add_row("Token Cross-Entropy (nats)", f"{ppl_res.cross_entropy_per_token:.4f}")
+    table.add_row("Evaluated Characters", f"{bpc_res.total_characters:,}")
+    table.add_row("Evaluated Target Tokens", f"{ppl_res.total_valid_targets:,}")
+    console.print(table)
 
 
 @app.command(name="compare")
 def compare(
-    run_a: Annotated[Path, typer.Argument(help="First run directory (e.g. runs/bpe)")],
-    run_b: Annotated[Path, typer.Argument(help="Second run directory (e.g. runs/char)")],
+    runs: Annotated[
+        list[Path],
+        typer.Argument(help="List of experiment run directories to compare (at least 2)"),
+    ],
+    split: Annotated[
+        str,
+        typer.Option("--split", "-s", help="Evaluation split to compare ('validation' or 'test')"),
+    ] = "validation",
+    allow_incompatible: Annotated[
+        bool,
+        typer.Option(
+            "--allow-incompatible",
+            help="Allow comparing runs with different corpus/split provenance (disables ranking)",
+        ),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output", "-o", help="Optional path to save comparison report (.json or .md)"
+        ),
+    ] = None,
 ) -> None:
-    """Compare cross-tokenizer performance (BPC, memorization, speed) between two runs."""
-    console.print(
-        Panel(
-            f"[bold yellow]Comparison Stub[/]\n"
-            f"Comparing {run_a} vs {run_b}\n"
-            "Implementation will be completed in Prompt 08.",
-            title="Cross-Tokenizer Comparison",
+    """Compare cross-tokenizer performance between experiment runs.
+
+    Defaults to --split validation to prevent test set snooping during development.
+    Compatible runs are ranked strictly by Macro BPC of the selected split.
+    """
+    if len(runs) < 2:
+        console.print("[bold red]At least 2 run directories are required for comparison.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        report = compare_runs(runs, split=split, allow_incompatible=allow_incompatible)
+    except ValueError as e:
+        console.print(f"[bold red]Comparison Error:[/]\n{e}")
+        raise typer.Exit(code=1)
+
+    if not report.is_compatible:
+        console.print(
+            Panel(
+                "[bold red]WARNING: INCOMPATIBLE RUNS[/]\n"
+                "Runs do not share identical corpus/split provenance.\n"
+                "Performance ranking has been disabled; runs are shown in input order.",
+                style="bold red",
+            )
         )
+
+    table = render_comparison_table(report, console=console)
+    console.print(table)
+    console.print(
+        "[dim]* Runs ranked by Macro BPC. "
+        "Token perplexity is per-token and not comparable across tokenizer families.[/dim]"
     )
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        if output.suffix == ".json":
+            output.write_text(report.model_dump_json(indent=2), encoding="utf-8")
+        else:
+            output.write_text(report.to_markdown(), encoding="utf-8")
+        console.print(f"[green]Saved comparison report to {output}[/]")
 
 
 # =========================================================================

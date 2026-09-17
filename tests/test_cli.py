@@ -58,6 +58,7 @@ def test_train_cli_with_bpe_and_temperature() -> None:
             "temperature",
             "--sampling-alpha",
             "0.5",
+            "--dry-run",
         ],
     )
     assert result.exit_code == 0
@@ -75,6 +76,7 @@ def test_train_cli_with_char_config() -> None:
             "train",
             "--config",
             "configs/char.toml",
+            "--dry-run",
         ],
     )
     assert result.exit_code == 0
@@ -110,6 +112,7 @@ def test_train_cli_flag_overrides() -> None:
             "--no-compile",
             "--effective-epochs",
             "10",
+            "--dry-run",
         ],
     )
     assert result.exit_code == 0
@@ -117,6 +120,20 @@ def test_train_cli_flag_overrides() -> None:
     assert "cpu" in result.stdout
     assert "False" in result.stdout
     assert "10" in result.stdout
+
+
+def test_train_cli_without_data_fails() -> None:
+    """Verify train CLI fails non-zero with helpful error when encoded data is missing."""
+    result = runner.invoke(
+        app,
+        [
+            "train",
+            "--config",
+            "configs/bpe.toml",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "ERROR: encoded BPE dataset not found" in result.stdout
 
 
 def test_config_show_command() -> None:

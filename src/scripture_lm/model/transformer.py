@@ -127,6 +127,13 @@ class TransformerLM(nn.Module):
             return sum(p.numel() for p_id, p in unique_params.items() if p_id != emb_id)
         return sum(p.numel() for p in unique_params.values())
 
+    def count_parameters(self, trainable_only: bool = True) -> int:
+        """Return total parameter count, handling tied weights without double-counting."""
+        if trainable_only:
+            unique_params = {id(p): p for p in self.parameters() if p.requires_grad}
+            return sum(p.numel() for p in unique_params.values())
+        return self.get_num_params(non_embedding=False)
+
     def parameter_summary(self) -> dict[str, Any]:
         """Return structured summary of model parameters and architecture."""
         total = self.get_num_params(non_embedding=False)

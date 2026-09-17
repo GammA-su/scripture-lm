@@ -24,6 +24,7 @@ def collate_chunks(batch: list[dict[str, Any]]) -> dict[str, Any]:
 
     batch_raw_chars = sum(int(item["raw_character_count"]) for item in batch)
     batch_target_tokens = sum(int(item["target_token_count"]) for item in batch)
+    raw_chars_per_chunk = [int(item["raw_character_count"]) for item in batch]
     families = [str(item["family"]) for item in batch]
     chunk_ids = [str(item["chunk_id"]) for item in batch]
 
@@ -31,6 +32,7 @@ def collate_chunks(batch: list[dict[str, Any]]) -> dict[str, Any]:
         "input_ids": input_ids,
         "target_ids": target_ids,
         "raw_characters": batch_raw_chars,
+        "raw_characters_per_chunk": raw_chars_per_chunk,
         "target_tokens": batch_target_tokens,
         "families": families,
         "chunk_ids": chunk_ids,
