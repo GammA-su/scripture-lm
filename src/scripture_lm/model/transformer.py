@@ -80,22 +80,29 @@ class TransformerLM(nn.Module):
         self,
         input_ids: torch.Tensor,
         targets: torch.Tensor | None = None,
+        kv_cache: Any | None = None,
+        start_pos: int | None = None,
     ) -> ModelOutput:
-        """Forward pass for causal next-token prediction.
+        """Forward pass for causal next-token prediction with optional KV caching.
 
         Args:
             input_ids: Tensor of shape (batch, seq_len) with token IDs.
             targets: Optional tensor of shape (batch, seq_len) with shifted next-token targets.
+            kv_cache: Optional preallocated KVCache instance.
+            start_pos: Optional starting position offset for RoPE. Inferred from cache if None.
 
         Returns:
             ModelOutput with logits of shape (batch, seq_len, vocab_size) and optional loss.
         """
         _, t = input_ids.shape
 
+        if start_pos is None:
+            start_pos = kv_cache.seq_len if kv_cache is not None else 0
+
         # Strictly enforce configured context limit
-        if t > self.config.max_context_length:
+        if start_pos + t > self.config.max_context_length:
             raise ValueError(
-                f"Sequence length {t} exceeds configured "
+                f"Sequence position {start_pos + t} exceeds configured "
                 f"max_context_length {self.config.max_context_length}."
             )
 
@@ -103,7 +110,7 @@ class TransformerLM(nn.Module):
         x = self.drop(x)
 
         for block in self.blocks:
-            x = block(x)
+            x = block(x, kv_cache=kv_cache, start_pos=start_pos)
 
         x = self.final_norm(x)
         logits = self.lm_head(x)

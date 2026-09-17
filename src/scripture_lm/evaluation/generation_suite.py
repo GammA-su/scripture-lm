@@ -36,8 +36,27 @@ class GenerationSettings(BaseModel):
 
     temperature: float = 0.8
     top_p: float = 0.95
-    max_new_tokens: int = 256
+    top_k: int | None = None
+    max_new_tokens: int = 512
+    max_new_characters: int | None = 1024
     seed: int = 42
+
+
+class GenerationResult(BaseModel):
+    """Structured result of an autoregressive generation pass."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str
+    continuation: str
+    full_text: str
+    prompt_token_ids: list[int]
+    generated_token_ids: list[int]
+    finish_reason: str = Field(
+        ...,
+        description="Termination reason: 'eos', 'character_limit', 'length', or 'context_limit'",
+    )
+    characters_generated: int
 
 
 class GenerationSample(BaseModel):
@@ -75,7 +94,9 @@ class GeneratorProtocol(Protocol):
         self,
         prompt: str,
         settings: GenerationSettings,
-    ) -> str:
+        *,
+        use_cache: bool = True,
+    ) -> GenerationResult:
         """Generate text continuation given a prompt and sampling settings."""
         ...
 
@@ -123,15 +144,40 @@ def get_canonical_generation_suite() -> GenerationSuite:
     """Return the fixed 'standard_v1' canonical generation benchmark suite."""
     return GenerationSuite(
         suite_id=BENCHMARK_VERSION,
-        description="Canonical Scripture-LM generation benchmark suite (seeds 0..9, T=0.8, p=0.95)",
+        description=(
+            "Canonical Scripture-LM generation benchmark suite "
+            "(seeds 0..9, T=0.8, p=0.95, target=1024 chars)"
+        ),
         prompts=CANONICAL_PROMPTS,
         canonical_settings=GenerationSettings(
             temperature=0.8,
             top_p=0.95,
-            max_new_tokens=256,
+            top_k=None,
+            max_new_tokens=512,
+            max_new_characters=1024,
             seed=0,
         ),
         seeds=list(range(10)),
+    )
+
+
+def sample_from_result(
+    sample_id: str,
+    result: GenerationResult,
+    settings: GenerationSettings,
+    family: str | None = None,
+    suite_id: str = BENCHMARK_VERSION,
+) -> GenerationSample:
+    """Construct a GenerationSample from a GenerationResult."""
+    return GenerationSample(
+        sample_id=sample_id,
+        prompt=result.prompt,
+        continuation=result.continuation,
+        full_text=result.full_text,
+        settings=settings,
+        finish_reason=result.finish_reason,
+        family=family,
+        suite_id=suite_id,
     )
 
 

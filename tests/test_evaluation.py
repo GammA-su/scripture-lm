@@ -483,7 +483,8 @@ def test_canonical_generation_seeds_are_fixed() -> None:
     assert suite.seeds == list(range(10))
     assert suite.canonical_settings.temperature == 0.8
     assert suite.canonical_settings.top_p == 0.95
-    assert suite.canonical_settings.max_new_tokens == 256
+    assert suite.canonical_settings.max_new_tokens == 512
+    assert suite.canonical_settings.max_new_characters == 1024
 
 
 # =========================================================================

@@ -16,7 +16,7 @@ from rich.table import Table
 from safetensors.torch import load_model
 from torch.utils.data import SequentialSampler
 
-from scripture_lm.config import ScriptureLMConfig, load_config
+from scripture_lm.config import BPETokenizerConfig, ScriptureLMConfig, load_config
 from scripture_lm.corpus import (
     CorpusLock,
     SplitManifest,
@@ -837,25 +837,168 @@ def train(
 def generate(
     checkpoint: Annotated[
         Path,
-        typer.Option("--checkpoint", help="Path to checkpoint directory or safetensors file"),
-    ] = Path("runs/bpe/checkpoints/best"),
+        typer.Option("--checkpoint", "-c", help="Path to checkpoint directory or safetensors file"),
+    ] = Path("runs/bpe-natural/checkpoints/best"),
     prompt: Annotated[
         str,
-        typer.Option("--prompt", help="Text prompt continuation"),
-    ] = "And the Lord said",
-    temperature: Annotated[float, typer.Option(help="Sampling temperature")] = 0.8,
-    top_p: Annotated[float, typer.Option(help="Nucleus sampling top-p")] = 0.95,
-    seed: Annotated[int | None, typer.Option(help="Sampling seed")] = 1337,
+        typer.Option("--prompt", "-p", help="Text prompt for continuation (empty for BOS-only)"),
+    ] = "And the prophet said",
+    temperature: Annotated[float, typer.Option(help="Sampling temperature (0.0 for greedy)")] = 0.8,
+    top_p: Annotated[float, typer.Option(help="Nucleus sampling top-p threshold")] = 0.95,
+    top_k: Annotated[int | None, typer.Option(help="Optional top-k filtering bound")] = None,
+    max_new_tokens: Annotated[
+        int | None,
+        typer.Option(help="Maximum tokens to generate (default: 256 for BPE, 1024 for CHAR)"),
+    ] = None,
+    max_new_characters: Annotated[
+        int | None,
+        typer.Option(help="Optional maximum character length for generated continuation"),
+    ] = None,
+    seed: Annotated[int | None, typer.Option(help="Random sampling seed for reproducibility")] = 42,
+    device: Annotated[str | None, typer.Option(help="Compute device ('cuda', 'cpu')")] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option("--output", "-o", help="Optional path to save generation artifact JSON"),
+    ] = None,
+    no_cache: Annotated[
+        bool,
+        typer.Option("--no-cache", help="Disable KV caching (for benchmarking/testing)"),
+    ] = False,
 ) -> None:
-    """Generate scriptural continuation from a trained checkpoint."""
+    """Generate scriptural continuation from a trained checkpoint using KV caching."""
+    from datetime import datetime
+
+    from scripture_lm.evaluation.generation_suite import GenerationSettings
+    from scripture_lm.generation.generate import (
+        TextGenerator,
+        create_generation_artifact,
+    )
+
+    # 1. Resolve model checkpoint path
+    if checkpoint.is_file():
+        model_file = checkpoint
+        parent_name = checkpoint.parent.name
+        if parent_name in ("best", "latest"):
+            run_dir = checkpoint.parent.parent
+        else:
+            run_dir = checkpoint.parent
+    else:
+        if (checkpoint / "model.safetensors").is_file():
+            model_file = checkpoint / "model.safetensors"
+            run_dir = checkpoint.parent if checkpoint.name in ("best", "latest") else checkpoint
+            if run_dir.name == "checkpoints":
+                run_dir = run_dir.parent
+        elif (checkpoint / "checkpoints" / "best" / "model.safetensors").is_file():
+            model_file = checkpoint / "checkpoints" / "best" / "model.safetensors"
+            run_dir = checkpoint
+        else:
+            console.print(f"[bold red]Checkpoint model not found in:[/] {checkpoint}")
+            raise typer.Exit(code=1)
+
+    # 2. Resolve device
+    target_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+
+    # 3. Load config and provenance
+    config_path = run_dir / "config.toml"
+    if config_path.is_file():
+        config = load_config(config_path)
+    else:
+        config = ScriptureLMConfig(tokenizer=BPETokenizerConfig())
+
+    tok_type = getattr(config.tokenizer, "type", "bpe")
+    if tok_type not in ("bpe", "character", "char"):
+        tok_type = "bpe"
+    if tok_type == "char":
+        tok_type = "character"
+
+    # 4. Load tokenizer
+    tok_dir = Path("artifacts/tokenizers")
+    tokenizer_inst: BaseTokenizer
+    if tok_type == "bpe":
+        bpe_path = run_dir / "bpe.json"
+        if not bpe_path.is_file():
+            bpe_path = tok_dir / "bpe.json"
+        if not bpe_path.is_file():
+            console.print(f"[bold red]BPE tokenizer artifact not found:[/] {bpe_path}")
+            raise typer.Exit(code=1)
+        tokenizer_inst = BPETokenizer.load(bpe_path)
+    else:
+        char_path = run_dir / "char_vocab.json"
+        if not char_path.is_file():
+            char_path = tok_dir / "char_vocab.json"
+        if not char_path.is_file():
+            console.print(f"[bold red]Character vocabulary artifact not found:[/] {char_path}")
+            raise typer.Exit(code=1)
+        tokenizer_inst = CharacterTokenizer.load(char_path)
+
+    # 5. Instantiate Model
+    vocab_size = tokenizer_inst.vocab_size
+    model_cfg = TransformerConfig.from_app_config(config, vocab_size=vocab_size)
+    model = TransformerLM(model_cfg)
+    load_model(model, str(model_file))
+    model.to(target_device)
+    model.eval()
+
+    # 6. Build GenerationSettings
+    effective_max_tokens = (
+        max_new_tokens if max_new_tokens is not None else (256 if tok_type == "bpe" else 1024)
+    )
+    settings = GenerationSettings(
+        temperature=temperature,
+        top_p=top_p,
+        top_k=top_k,
+        max_new_tokens=effective_max_tokens,
+        max_new_characters=max_new_characters,
+        seed=seed if seed is not None else 42,
+    )
+
+    # 7. Generate Continuation
+    generator = TextGenerator(model, tokenizer_inst, device=target_device)
+    result = generator.generate(prompt, settings, use_cache=not no_cache)
+
+    # 8. Create GenerationArtifact
+    model_sha256 = compute_file_sha256(model_file)
+    sampling_mode = getattr(config.training, "sampling_strategy", None)
+    temp_alpha = getattr(config.training, "temperature_alpha", None)
+
+    artifact = create_generation_artifact(
+        result=result,
+        checkpoint_path=model_file,
+        checkpoint_model_sha256=model_sha256,
+        tokenizer_type=tok_type,
+        settings=settings,
+        training_sampling_mode=sampling_mode,
+        training_temperature_alpha=temp_alpha,
+    )
+
+    # 9. Save Artifact if requested or into run_dir/generations
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(artifact.model_dump(), indent=2), encoding="utf-8")
+        console.print(f"[green]Saved generation artifact to {output}[/]")
+    elif run_dir.is_dir():
+        gen_dir = run_dir / "generations"
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        default_out = gen_dir / f"generation_{int(datetime.now().timestamp())}.json"
+        default_out.write_text(json.dumps(artifact.model_dump(), indent=2), encoding="utf-8")
+
+    # 10. Display Visual Panel
+    prompt_display = prompt if prompt else "[italic dim]<unprompted BOS>[/]"
+    footer_info = (
+        f"[dim]Finish: {result.finish_reason} | Tokens: {len(result.generated_token_ids)} | "
+        f"Chars: {result.characters_generated} | Seed: {settings.seed} | "
+        f"T: {settings.temperature} | p: {settings.top_p} | "
+        f"KV-Cache: {'off' if no_cache else 'on'}[/]"
+    )
     console.print(
         Panel(
-            f"[bold yellow]Generation Stub[/]\n"
-            f"Checkpoint: {checkpoint}\n"
-            f"Prompt: {prompt}\n"
-            f"Temp: {temperature}, Top-p: {top_p}, Seed: {seed}\n"
-            "Implementation will be completed in Prompt 08.",
-            title="Generate Text",
+            f"[bold magenta]SYNTHETIC MODEL OUTPUT[/]\n"
+            f"[dim]Generated autoregressively by Scripture-LM. Not authentic scripture.[/]\n\n"
+            f"[bold cyan]Prompt:[/] {prompt_display}\n"
+            f"[bold green]Continuation:[/] {result.continuation}\n\n"
+            f"{footer_info}",
+            title="Scripture-LM Generation",
+            border_style="cyan",
         )
     )
 
@@ -1061,9 +1204,69 @@ def evaluate(
     console.print(f"[green]Saved evaluation report to {report_file}[/]")
 
     if generate:
+        console.print("[bold cyan]Running canonical generation benchmark suite (standard_v1)...[/]")
+        from scripture_lm.evaluation.generation_suite import (
+            GenerationSample,
+            GenerationSettings,
+            get_canonical_generation_suite,
+            sample_from_result,
+            save_generation_results,
+        )
+        from scripture_lm.evaluation.repetition import analyze_generation_repetition
+        from scripture_lm.generation.generate import TextGenerator
+
+        tok_dir = Path("artifacts/tokenizers")
+        tokenizer_inst: BaseTokenizer
+        if tok_type == "bpe":
+            bpe_path = run / "bpe.json" if (run / "bpe.json").is_file() else tok_dir / "bpe.json"
+            tokenizer_inst = BPETokenizer.load(bpe_path)
+        else:
+            char_path = (
+                run / "char_vocab.json"
+                if (run / "char_vocab.json").is_file()
+                else tok_dir / "char_vocab.json"
+            )
+            tokenizer_inst = CharacterTokenizer.load(char_path)
+
+        suite = get_canonical_generation_suite()
+        text_gen = TextGenerator(model, tokenizer_inst, device=target_device)
+        samples: list[GenerationSample] = []
+        for prompt_def in suite.prompts:
+            for seed_val in suite.seeds:
+                gen_settings = GenerationSettings(
+                    temperature=suite.canonical_settings.temperature,
+                    top_p=suite.canonical_settings.top_p,
+                    top_k=suite.canonical_settings.top_k,
+                    max_new_tokens=suite.canonical_settings.max_new_tokens,
+                    max_new_characters=suite.canonical_settings.max_new_characters,
+                    seed=seed_val,
+                )
+                sample_id = f"{prompt_def.prompt_id}_s{seed_val}"
+                res = text_gen.generate(prompt_def.prompt_text, gen_settings)
+                sample = sample_from_result(
+                    sample_id=sample_id,
+                    result=res,
+                    settings=gen_settings,
+                    family=prompt_def.family,
+                    suite_id=suite.suite_id,
+                )
+                samples.append(sample)
+
+        gen_dir = run / "generations"
+        gen_dir.mkdir(parents=True, exist_ok=True)
+        save_generation_results(gen_dir / "samples.json", samples)
         console.print(
-            "[yellow]Note: Canonical generation engine and KV cache arrive in Prompt 08.\n"
-            "Pre-existing samples in generations/samples.json will be analyzed if present.[/yellow]"
+            f"[green]Saved {len(samples)} generation samples to {gen_dir / 'samples.json'}[/]"
+        )
+
+        rep_report = analyze_generation_repetition(samples)
+        (gen_dir / "repetition_report.json").write_text(
+            json.dumps(rep_report.model_dump(), indent=2), encoding="utf-8"
+        )
+        console.print(
+            f"[dim]Repetition: distinct-1={rep_report.mean_distinct_1:.3f}, "
+            f"distinct-4={rep_report.mean_distinct_4:.3f}, "
+            f"cycles={rep_report.samples_with_degenerate_cycle}[/]"
         )
 
     # 9. Render Summary Table

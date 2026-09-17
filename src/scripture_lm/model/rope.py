@@ -74,13 +74,15 @@ class RotaryEmbedding(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         seq_len: int,
+        start_pos: int = 0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Apply RoPE to queries and keys of shape (B, heads, T, head_dim)."""
-        if seq_len > self.cos_cached.shape[0]:
-            self._build_cache(seq_len)
+        end_pos = start_pos + seq_len
+        if end_pos > self.cos_cached.shape[0]:
+            self._build_cache(end_pos)
 
-        cos = self.cos_cached[:seq_len]
-        sin = self.sin_cached[:seq_len]
+        cos = self.cos_cached[start_pos:end_pos]
+        sin = self.sin_cached[start_pos:end_pos]
 
         q_rot = apply_rotary_emb(q, cos, sin)
         k_rot = apply_rotary_emb(k, cos, sin)
