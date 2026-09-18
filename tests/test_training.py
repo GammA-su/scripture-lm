@@ -25,6 +25,7 @@ from scripture_lm.data.sampler import NaturalSampler, TemperatureSampler
 from scripture_lm.model.config import TransformerConfig
 from scripture_lm.model.transformer import TransformerLM
 from scripture_lm.tokenization.base import compute_manifest_sha256
+from scripture_lm.tokenization.character import CharacterTokenizer
 from scripture_lm.training.checkpoint import load_checkpoint, save_checkpoint
 from scripture_lm.training.metrics import (
     EarlyStopping,
@@ -865,15 +866,22 @@ def test_training_refuses_wrong_context_length(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("accumulation_steps", [1, 8])
+@pytest.mark.parametrize("metadata_name", ["encoding_provenance.json", "encoding_metadata.json"])
+@pytest.mark.parametrize("tokenizer_type", ["bpe", "character"])
 def test_run_directory_snapshots(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, accumulation_steps: int
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    accumulation_steps: int,
+    metadata_name: str,
+    tokenizer_type: str,
 ) -> None:
     """Verify Trainer run directory creation snapshots all required metadata files."""
     # Set up valid minimal mock data structure
     lock = make_mock_lock_and_doc("fingerprint_123", "norm_456")
     (tmp_path / "data" / "splits").mkdir(parents=True)
-    (tmp_path / "data" / "encoded" / "bpe" / "train").mkdir(parents=True)
-    (tmp_path / "data" / "encoded" / "bpe" / "validation").mkdir(parents=True)
+    encoded_dir = tmp_path / "data" / "encoded" / tokenizer_type
+    (encoded_dir / "train").mkdir(parents=True)
+    (encoded_dir / "validation").mkdir(parents=True)
     (tmp_path / "artifacts" / "tokenizers").mkdir(parents=True)
     (tmp_path / "corpus").mkdir(parents=True)
 
@@ -893,20 +901,28 @@ def test_run_directory_snapshots(
     split_file = tmp_path / "data" / "splits" / "split_manifest.json"
     split_file.write_text(split.model_dump_json(indent=2), encoding="utf-8")
 
-    tok_file = tmp_path / "artifacts" / "tokenizers" / "bpe.json"
-    tok_file.write_text("{}", encoding="utf-8")
-    tok_meta = tmp_path / "artifacts" / "tokenizers" / "bpe_metadata.json"
-    tok_meta.write_text("{}", encoding="utf-8")
+    tok_dir = tmp_path / "artifacts" / "tokenizers"
+    if tokenizer_type == "character":
+        tok_file = tok_dir / "char_vocab.json"
+        CharacterTokenizer(
+            ["<pad>", "<bos>", "<eos>", "<unk>"] + [chr(32 + i) for i in range(60)]
+        ).save(tok_file)
+        tok_meta = tok_dir / "char_metadata.json"
+    else:
+        tok_file = tok_dir / "bpe.json"
+        tok_file.write_text("{}", encoding="utf-8")
+        tok_meta = tok_dir / "bpe_metadata.json"
+    tok_meta.write_text(json.dumps({"vocab_size": 64}), encoding="utf-8")
 
     manifest_file = tmp_path / "corpus" / "corpus_manifest.toml"
     manifest_file.write_text("[documents]\n", encoding="utf-8")
 
     # Binary token files (uint16)
-    bin_file = tmp_path / "data" / "encoded" / "bpe" / "train" / "fam.bin"
+    bin_file = encoded_dir / "train" / "fam.bin"
     arr = np.arange(100, dtype=np.uint16)
     arr.tofile(bin_file)
 
-    val_bin = tmp_path / "data" / "encoded" / "bpe" / "validation" / "fam.bin"
+    val_bin = encoded_dir / "validation" / "fam.bin"
     arr.tofile(val_bin)
 
     # Chunk indexes
@@ -917,7 +933,7 @@ def test_run_directory_snapshots(
         token_start=0,
         valid_token_count=17,
         raw_character_count=10,
-        bin_path="bpe/train/fam.bin",
+        bin_path=f"{tokenizer_type}/train/fam.bin",
     )
     val_chunk = make_mock_chunk(
         chunk_id="chunk_0",
@@ -926,13 +942,15 @@ def test_run_directory_snapshots(
         token_start=0,
         valid_token_count=17,
         raw_character_count=10,
-        bin_path="bpe/validation/fam.bin",
+        bin_path=f"{tokenizer_type}/validation/fam.bin",
     )
-    save_chunk_index([chunk], tmp_path / "data" / "encoded" / "bpe" / "train_chunks.json")
-    save_chunk_index([val_chunk], tmp_path / "data" / "encoded" / "bpe" / "validation_chunks.json")
+    chunk = chunk.model_copy(update={"tokenizer": tokenizer_type})
+    val_chunk = val_chunk.model_copy(update={"tokenizer": tokenizer_type})
+    save_chunk_index([chunk], encoded_dir / "train_chunks.json")
+    save_chunk_index([val_chunk], encoded_dir / "validation_chunks.json")
 
     enc_prov = EncodingProvenance(
-        tokenizer_type="bpe",
+        tokenizer_type=tokenizer_type,
         context_length=16,
         chunk_length=17,
         corpus_fingerprint="fingerprint_123",
@@ -942,16 +960,18 @@ def test_run_directory_snapshots(
         total_chunks={"train": 1},
         natural_train_target_characters=10,
     )
-    (tmp_path / "data" / "encoded" / "bpe" / "encoding_metadata.json").write_text(
-        enc_prov.model_dump_json(), encoding="utf-8"
-    )
+    (encoded_dir / metadata_name).write_text(enc_prov.model_dump_json(), encoding="utf-8")
 
     run_dir = tmp_path / "test_run"
 
     cfg = ScriptureLMConfig.model_validate(
         {
             "model": {"layers": 1, "d_model": 32, "heads": 2, "mlp_hidden": 64},
-            "tokenizer": {"type": "bpe", "bpe_vocab_size": 64, "context_length": 16},
+            "tokenizer": {
+                "type": tokenizer_type,
+                "context_length": 16,
+                **({"bpe_vocab_size": 64} if tokenizer_type == "bpe" else {}),
+            },
             "training": {
                 "device": "cpu",
                 "compile": False,
@@ -969,6 +989,9 @@ def test_run_directory_snapshots(
         corpus_root=tmp_path / "corpus",
         artifacts_root=tmp_path / "artifacts",
     )
+
+    assert trainer.model_config.vocab_size == 64
+    assert trainer.raw_model.tok_embeddings.num_embeddings == 64
 
     # Verify all 6 metadata snapshot files exist in run_dir
     assert (run_dir / "config.toml").is_file()

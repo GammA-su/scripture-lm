@@ -26,7 +26,11 @@ from scripture_lm.corpus.manifest import compute_file_sha256
 from scripture_lm.corpus.normalize import CorpusLock
 from scripture_lm.corpus.split import SplitManifest
 from scripture_lm.data.batching import create_dataloader
-from scripture_lm.data.chunk_index import EncodingProvenance, load_chunk_index
+from scripture_lm.data.chunk_index import (
+    EncodingProvenance,
+    encoding_provenance_path,
+    load_chunk_index,
+)
 from scripture_lm.data.dataset import ScriptureChunkDataset
 from scripture_lm.data.sampler import NaturalSampler, SequentialSampler, TemperatureSampler
 from scripture_lm.experiments.matrix import config_hash, scientific_config
@@ -40,7 +44,8 @@ from scripture_lm.experiments.storage import (
 from scripture_lm.experiments.storage import serialize_toml_dict as serialize_toml_dict
 from scripture_lm.model.config import TransformerConfig
 from scripture_lm.model.transformer import TransformerLM
-from scripture_lm.tokenization.base import compute_manifest_sha256
+from scripture_lm.tokenization.base import compute_manifest_sha256, tokenizer_metadata_path
+from scripture_lm.tokenization.character import CharacterTokenizer
 from scripture_lm.training.checkpoint import load_checkpoint, save_checkpoint
 from scripture_lm.training.metrics import (
     EarlyStopping,
@@ -71,8 +76,8 @@ def verify_encoding_provenance(
     lock_file = data_root / "corpus_lock.json"
     split_file = data_root / "splits" / "split_manifest.json"
     encoded_dir = data_root / "encoded" / tok_type
-    encoding_meta_file = encoded_dir / "encoding_metadata.json"
-    tok_meta_file = artifacts_root / "tokenizers" / f"{tok_type}_metadata.json"
+    encoding_meta_file = encoding_provenance_path(encoded_dir)
+    tok_meta_file = tokenizer_metadata_path(artifacts_root / "tokenizers", tok_type)
     tok_artifact = (
         artifacts_root / "tokenizers" / ("bpe.json" if tok_type == "bpe" else "char_vocab.json")
     )
@@ -312,11 +317,7 @@ class Trainer:
             vocab_size = getattr(config.tokenizer, "bpe_vocab_size")
         else:
             char_vocab_file = self.artifacts_root / "tokenizers" / "char_vocab.json"
-            if char_vocab_file.is_file():
-                char_data = json.loads(char_vocab_file.read_text(encoding="utf-8"))
-                vocab_size = len(char_data)
-            else:
-                vocab_size = 256
+            vocab_size = CharacterTokenizer.load(char_vocab_file).vocab_size
 
         self.model_config = TransformerConfig.from_app_config(config, vocab_size=vocab_size)
         self.raw_model = TransformerLM(self.model_config).to(self.device)
@@ -441,13 +442,12 @@ class Trainer:
             "corpus_manifest.toml": self.corpus_root / "corpus_manifest.toml",
             "corpus_lock.json": self.data_root / "corpus_lock.json",
             "split_manifest.json": self.data_root / "splits" / "split_manifest.json",
-            "tokenizer_metadata.json": self.artifacts_root
-            / "tokenizers"
-            / f"{self.config.tokenizer.type}_metadata.json",
-            "encoding_metadata.json": self.data_root
-            / "encoded"
-            / self.config.tokenizer.type
-            / "encoding_metadata.json",
+            "tokenizer_metadata.json": tokenizer_metadata_path(
+                self.artifacts_root / "tokenizers", self.config.tokenizer.type
+            ),
+            "encoding_metadata.json": encoding_provenance_path(
+                self.data_root / "encoded" / self.config.tokenizer.type
+            ),
         }
         artifact = "bpe.json" if self.config.tokenizer.type == "bpe" else "char_vocab.json"
         sources[artifact] = self.artifacts_root / "tokenizers" / artifact

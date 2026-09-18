@@ -90,6 +90,72 @@ uv run scripture-lm config show --config configs/char.toml
 uv run scripture-lm train --config configs/bpe.toml --sampling-mode temperature --sampling-alpha 0.5 --dry-run
 ```
 
+## Build the local scripture corpus
+
+`tools/build_core_canon.py` converts the already-downloaded eBible JPS/KJV
+read-aloud files and structured Pickthall text into 180 scripture documents.
+It does not download inputs or execute any downstream pipeline.
+
+Expected inputs are `sources/ebible/jps/`, `sources/ebible/kjv/`, and
+`sources/quran/pickthall.txt`. The two ZIP files under `sources/ebible/`, when
+present, are hashed for provenance; extraction is not performed by the builder.
+
+```powershell
+# Inspect all sources and validate without modifying corpus or research artifacts.
+uv run python tools\build_core_canon.py --dry-run
+
+# After reviewing the dry-run, construct the corpus explicitly.
+uv run python tools\build_core_canon.py
+```
+
+The inspected eBible pattern is
+`<translation>_<archive-index>_<book-code>_<chapter>_read.txt`:
+Genesis is `002_GEN`, Matthew is `070_MAT`, and Revelation is `096_REV`.
+Psalms uses three chapter digits; other books use two. Both archives contain
+`*_000_000_000_read.txt`, `copr.htm`, and `keys.asc`, which are explicitly
+excluded. Exact observed chapter counts validate all 39 JPS books and 27 KJV
+New Testament books. KJV Old Testament chapters are inspected and excluded.
+
+Cleaning removes the explicit `Chapter N.` line and all preceding title lines,
+removes whitespace-delimited pilcrows, and joins scripture lines with one space.
+Chapters are joined in numeric order with two newlines; documents end with one
+Unix newline. Spelling, case, punctuation, and other scripture wording remain
+unchanged. The supplied JPS files unexpectedly include `(chapter-verse)` markers
+inside scripture lines, including outside Psalms, and five `BOOK I`–`BOOK V`
+Psalms labels. Their exact source-specific removal was approved and is separately
+counted in the audit; other parenthetical text and Psalm superscriptions remain.
+
+The supplied Pickthall source uses `surah|ayah|text` with a trailing `#` comment
+block. Only those comment lines and blank lines are ignored. References must be
+positive integers, surahs must form unique blocks, and ayahs are sorted numerically.
+The observed 114-surah / 6,236-ayah counts are pinned to detect internal gaps and
+truncated final ayahs. Reference fields and comments never enter final documents.
+
+The build writes:
+
+- `corpus/raw/hebrew_bible/*.txt`: 39 JPS books.
+- `corpus/raw/new_testament/*.txt`: 27 KJV New Testament books.
+- `corpus/raw/quran/001.txt` through `114.txt`: Pickthall surahs.
+- `corpus/corpus_manifest.toml`: deterministic IDs, order, licenses, and final-byte hashes.
+- `research/source_provenance.json`: relative source paths, hashes, byte sizes,
+  translation roles, archive hashes, and explicit KJV Old Testament exclusion.
+- `research/corpus_build_report.json`: per-chapter/surah cleaning records and aggregate counts.
+
+Existing corpus `.txt` files block construction by default. `--force` only
+replaces the fixed outputs owned by a previous build, as recorded in its
+provenance report. Unknown `.txt` files, unowned existing files, unrelated reports,
+and symlinks/junctions are rejected. The builder never recursively deletes a
+corpus directory. All input parsing and validation finish before writing; the
+manifest is published after all 180 output hashes are verified. Writes are atomic
+per file, not a transaction across the entire corpus, so an interrupted build
+must be inspected before reuse.
+
+Dry-run prints inventory and cleaning totals without writing reports. Build
+reports contain no timestamps or absolute machine paths. Unit retained-character
+counts exclude inserted separators; document totals include separators and the
+final newline. All builder tests use temporary fixtures. Corpus preparation,
+tokenization, encoding, training, and evaluation remain separate manual actions.
+
 ## Baseline experiments
 
 The four canonical experiments share the same Transformer, seed, optimizer, and

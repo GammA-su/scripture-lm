@@ -32,6 +32,7 @@ from scripture_lm.data import (
     load_chunk_index,
     simulate_sampling,
 )
+from scripture_lm.data.chunk_index import encoding_provenance_path
 from scripture_lm.evaluation import (
     compare_runs,
     render_comparison_table,
@@ -795,7 +796,7 @@ def train(
 
     # Check for encoded dataset before starting
     tok_type = resolved_config.tokenizer.type
-    encoding_meta_file = Path("data/encoded") / tok_type / "encoding_metadata.json"
+    encoding_meta_file = encoding_provenance_path(Path("data/encoded") / tok_type)
     if not encoding_meta_file.is_file():
         console.print(
             f"[bold red]ERROR: encoded {tok_type.upper()} dataset not found.[/]\n"

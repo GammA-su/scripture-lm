@@ -9,6 +9,20 @@ from typing import Any, Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field
 
+ENCODING_PROVENANCE_FILENAME = "encoding_provenance.json"
+
+
+def encoding_provenance_path(encoded_dir: Path) -> Path:
+    """Use the encoder's canonical filename, falling back to older dataset metadata.
+
+    Canonical provenance takes precedence when both files exist; an obsolete legacy
+    snapshot must not shadow a newly encoded dataset. Invalid canonical data is never
+    silently replaced with legacy data.
+    """
+    canonical = encoded_dir / ENCODING_PROVENANCE_FILENAME
+    legacy = encoded_dir / "encoding_metadata.json"
+    return canonical if canonical.is_file() or not legacy.is_file() else legacy
+
 
 class ChunkMetadata(BaseModel):
     """Metadata for a single fixed-context training, validation, or test chunk."""

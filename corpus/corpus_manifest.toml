@@ -1,17 +1,1263 @@
-# Scripture-LM Corpus Purity Manifest
-# ONLY files listed in this manifest may ever enter the tokenizer or training dataset.
-# The preprocessing pipeline refuses any unregistered input to ensure a strict closed world.
-#
-# Schema for [[documents]]:
-# [[documents]]
-# id = "genesis"
-# family = "hebrew_bible"   # Allowed: "hebrew_bible", "new_testament", "quran"
-# path = "raw/hebrew_bible/genesis.txt"
-# sha256 = "..."
-# license = "public-domain"
-
 version = "1.0"
 name = "core-canon-v1"
-license_policy = "public-domain"
+license_policy = "public-domain-only"
 
-documents = []
+[[documents]]
+id = "hb_genesis"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/genesis.txt"
+license = "public-domain"
+sha256 = "3e349cb4fa944da26e06b73f00d5196e2caeaf25e3e646318e948a3e9120135a"
+
+[[documents]]
+id = "hb_exodus"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/exodus.txt"
+license = "public-domain"
+sha256 = "9c951ccc9d786304f8a4fa22cf430be4081c95c689e1a0709241307ffd649079"
+
+[[documents]]
+id = "hb_leviticus"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/leviticus.txt"
+license = "public-domain"
+sha256 = "11bb346ef40d05ce915ff051481ef980d57971c051462bd0d8317df7551e1e29"
+
+[[documents]]
+id = "hb_numbers"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/numbers.txt"
+license = "public-domain"
+sha256 = "b4275f2a6450ef6f590291f416c7f74ae9038f3942e1df75de48dfffe6fd0bb4"
+
+[[documents]]
+id = "hb_deuteronomy"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/deuteronomy.txt"
+license = "public-domain"
+sha256 = "cad87b6d8109d1c3ac0430cd653b80ebc3171bc4b1ac30c0cf03c382b69ac6ad"
+
+[[documents]]
+id = "hb_joshua"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/joshua.txt"
+license = "public-domain"
+sha256 = "b5f4cf352b796565ffd62938cf2098bd1f405d6f13ed37719fd2bc0b5777a15c"
+
+[[documents]]
+id = "hb_judges"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/judges.txt"
+license = "public-domain"
+sha256 = "5b05b8dcb794608081cff6f611e6bffb68d692e4c2fe3d4cd66a7f07ec2bf835"
+
+[[documents]]
+id = "hb_ruth"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/ruth.txt"
+license = "public-domain"
+sha256 = "3e8afe97f121783cfdac3c0981b46ef2e072854dd6748e9dcd236abf8fe46faf"
+
+[[documents]]
+id = "hb_1_samuel"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/1_samuel.txt"
+license = "public-domain"
+sha256 = "936b63987d57284658b5c6f79b93f214535d709d584cb14254d0ee5adf92f3ab"
+
+[[documents]]
+id = "hb_2_samuel"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/2_samuel.txt"
+license = "public-domain"
+sha256 = "cf80eb507ac99ae39c458b96074d7d4405396978b907ee482c84369775faae3f"
+
+[[documents]]
+id = "hb_1_kings"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/1_kings.txt"
+license = "public-domain"
+sha256 = "c257117ff7a75928dadb4c9a4116653349c460081e4388b7698b03c60f2fb8e2"
+
+[[documents]]
+id = "hb_2_kings"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/2_kings.txt"
+license = "public-domain"
+sha256 = "3f50dd96617e362184cb1aadbb79a0261bef7220954274be06727413708173d2"
+
+[[documents]]
+id = "hb_1_chronicles"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/1_chronicles.txt"
+license = "public-domain"
+sha256 = "5b011c9aaa77eb3600aa43480a696eaac631e1fdbe24eb34a482cccaff0c0017"
+
+[[documents]]
+id = "hb_2_chronicles"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/2_chronicles.txt"
+license = "public-domain"
+sha256 = "72014de1e5d76d6a187b1295464da8b13e4bd95f82a14c248dc9292f8aacb76d"
+
+[[documents]]
+id = "hb_ezra"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/ezra.txt"
+license = "public-domain"
+sha256 = "02ece316a1c8ab44d64441036bd06fcce8b5bb426d0070a416e746f471b076b5"
+
+[[documents]]
+id = "hb_nehemiah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/nehemiah.txt"
+license = "public-domain"
+sha256 = "3dea2e36a4775c8d5388d4c2495bcd35a9be10d6d451aeac940892052a09d078"
+
+[[documents]]
+id = "hb_esther"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/esther.txt"
+license = "public-domain"
+sha256 = "e4d0d74380b7acca69f7584b290ed808aac67f5338fa6bc5517d74407959c49d"
+
+[[documents]]
+id = "hb_job"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/job.txt"
+license = "public-domain"
+sha256 = "711ea221e934ee729824c258ca67a7c0e3d5418b8c54b4817018f76d032f6d4e"
+
+[[documents]]
+id = "hb_psalms"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/psalms.txt"
+license = "public-domain"
+sha256 = "67c5bdfe2ad03b32e11ff98764a85515c9449f81676bfcf882c1b0f3b7adad13"
+
+[[documents]]
+id = "hb_proverbs"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/proverbs.txt"
+license = "public-domain"
+sha256 = "9ec4f1b8c73a165b2a8aab24424bda87f650a777a4e20f93b0db59ed9a16c7b3"
+
+[[documents]]
+id = "hb_ecclesiastes"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/ecclesiastes.txt"
+license = "public-domain"
+sha256 = "21f4b63ba9d1f74f74076d98ee04ba245c51beedd3acc991fed4a1c13450fda7"
+
+[[documents]]
+id = "hb_song_of_songs"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/song_of_songs.txt"
+license = "public-domain"
+sha256 = "82f5a25cb19debd1c42e7820eeef72a802c737450f929dae494cfe5c5d608c30"
+
+[[documents]]
+id = "hb_isaiah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/isaiah.txt"
+license = "public-domain"
+sha256 = "7b0a2870634e428c25ad9846953680b11d31bedc32d5e61696557b4aaf6ace80"
+
+[[documents]]
+id = "hb_jeremiah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/jeremiah.txt"
+license = "public-domain"
+sha256 = "7f11f70688dc0f7d4697a31711985d3e29e4f22a312d217d7e99ce37ea10f20b"
+
+[[documents]]
+id = "hb_lamentations"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/lamentations.txt"
+license = "public-domain"
+sha256 = "5d734a46a1a93728a317ca8d599fba4f7a5dd752e31c9d731f0f08022298caf0"
+
+[[documents]]
+id = "hb_ezekiel"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/ezekiel.txt"
+license = "public-domain"
+sha256 = "65544ad29549a06d1eb0367b0d508ed93e8f01a42758ef5b28dc5c4a8065f8e0"
+
+[[documents]]
+id = "hb_daniel"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/daniel.txt"
+license = "public-domain"
+sha256 = "9f867f238043dce47c1d3b7b4dddb8d336a36fd3275c8199742ef6635b4ddf1d"
+
+[[documents]]
+id = "hb_hosea"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/hosea.txt"
+license = "public-domain"
+sha256 = "3cf5fe1f1da939671df832a117a4343256cd0f93f3190103c2e0fa08cc2fb2a4"
+
+[[documents]]
+id = "hb_joel"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/joel.txt"
+license = "public-domain"
+sha256 = "928041aa9f092115dec45960061dc5a9ab51ba134096b852083f863468cebb24"
+
+[[documents]]
+id = "hb_amos"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/amos.txt"
+license = "public-domain"
+sha256 = "40b626340155a9616014b6a51aa2a5fb84d42b02cc3c77c96b70015281fc93c2"
+
+[[documents]]
+id = "hb_obadiah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/obadiah.txt"
+license = "public-domain"
+sha256 = "b55399d39a6564c388734cafd81db274923ec2234e63d2a7157817e1cb412429"
+
+[[documents]]
+id = "hb_jonah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/jonah.txt"
+license = "public-domain"
+sha256 = "bcd1f36d436d35a8feded152d719889ec1fe56ee559d9f8ebfe80feb91907f60"
+
+[[documents]]
+id = "hb_micah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/micah.txt"
+license = "public-domain"
+sha256 = "b1e398e5660df94138290e969921afd4f4519317ea1974a82f88699a9388c4ac"
+
+[[documents]]
+id = "hb_nahum"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/nahum.txt"
+license = "public-domain"
+sha256 = "9584ed997b15f8b45a913e3b304666af0805289705434c10fda3b395b9f47ad5"
+
+[[documents]]
+id = "hb_habakkuk"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/habakkuk.txt"
+license = "public-domain"
+sha256 = "ac34ca339d900b381897b0b8d8ace05a26fb8fc4d9bea0014a9db585abadf48e"
+
+[[documents]]
+id = "hb_zephaniah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/zephaniah.txt"
+license = "public-domain"
+sha256 = "5e251eb9cd61d37b277619565af4935994bceaacb01571ffb76f5f3fd0240646"
+
+[[documents]]
+id = "hb_haggai"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/haggai.txt"
+license = "public-domain"
+sha256 = "81195cf224fe9eb3663994c8b3ee50a4c1b7e0a71b061990fcee39431d902cb8"
+
+[[documents]]
+id = "hb_zechariah"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/zechariah.txt"
+license = "public-domain"
+sha256 = "b3d8f436414d838f5501bae5ee23595f25c52debf0430f511dcd7d716bf5c515"
+
+[[documents]]
+id = "hb_malachi"
+family = "hebrew_bible"
+path = "raw/hebrew_bible/malachi.txt"
+license = "public-domain"
+sha256 = "ec914eaf2755e58bc201c31a42ad3f687d1ac7fb85c057e7b727c656db1e5f2c"
+
+[[documents]]
+id = "nt_matthew"
+family = "new_testament"
+path = "raw/new_testament/matthew.txt"
+license = "public-domain"
+sha256 = "0e099d88741adc684456ed5da8f9bc85222875ba09ba25c37a255fcf8aecf1a4"
+
+[[documents]]
+id = "nt_mark"
+family = "new_testament"
+path = "raw/new_testament/mark.txt"
+license = "public-domain"
+sha256 = "163da192d8864969913380ac0e83d79af2409d5c1ff4f465341fd337d766bf7a"
+
+[[documents]]
+id = "nt_luke"
+family = "new_testament"
+path = "raw/new_testament/luke.txt"
+license = "public-domain"
+sha256 = "906f9ea1997015ebb3637d4a67f79d85a4f06facbef24647dcb3a75ae1cc2cd1"
+
+[[documents]]
+id = "nt_john"
+family = "new_testament"
+path = "raw/new_testament/john.txt"
+license = "public-domain"
+sha256 = "fc99af8a1f46771459e10f5c431126c72bb96af9c00452c65cd18df3297581ec"
+
+[[documents]]
+id = "nt_acts"
+family = "new_testament"
+path = "raw/new_testament/acts.txt"
+license = "public-domain"
+sha256 = "990b2882b6539e61ef1491bf885255de736a42d901570a905f4760e7178c4e8b"
+
+[[documents]]
+id = "nt_romans"
+family = "new_testament"
+path = "raw/new_testament/romans.txt"
+license = "public-domain"
+sha256 = "14d3d56ac3836363c23d7589d0e5956628b355d45da80c59bfb16b69ea0231f9"
+
+[[documents]]
+id = "nt_1_corinthians"
+family = "new_testament"
+path = "raw/new_testament/1_corinthians.txt"
+license = "public-domain"
+sha256 = "53f4eb5d896db75073d9a45375fd8a137ef4c1dbf23bba37b9331808ab615869"
+
+[[documents]]
+id = "nt_2_corinthians"
+family = "new_testament"
+path = "raw/new_testament/2_corinthians.txt"
+license = "public-domain"
+sha256 = "8006646260ffee02b932d4b3d8b0d00ed280d2fb6a10de88a4b0af1a278f24ab"
+
+[[documents]]
+id = "nt_galatians"
+family = "new_testament"
+path = "raw/new_testament/galatians.txt"
+license = "public-domain"
+sha256 = "0dd7f7f93aff426446c28b1455fefa677745817e4aa16575a9d5abbb236933ae"
+
+[[documents]]
+id = "nt_ephesians"
+family = "new_testament"
+path = "raw/new_testament/ephesians.txt"
+license = "public-domain"
+sha256 = "349024422b8f45f7f15662b62ed5140635000841fe315b50f42023c1082f61b9"
+
+[[documents]]
+id = "nt_philippians"
+family = "new_testament"
+path = "raw/new_testament/philippians.txt"
+license = "public-domain"
+sha256 = "0436038f57b9df5117b964601e07d31a4f219b48b90a65eb6ef90988eaa84148"
+
+[[documents]]
+id = "nt_colossians"
+family = "new_testament"
+path = "raw/new_testament/colossians.txt"
+license = "public-domain"
+sha256 = "84aba46b96d3e75d77205b47d7e2b1e431d590fbcdc9b8bc610a2c97a946a479"
+
+[[documents]]
+id = "nt_1_thessalonians"
+family = "new_testament"
+path = "raw/new_testament/1_thessalonians.txt"
+license = "public-domain"
+sha256 = "cd65497ccaf4c743e3aa6e155f5cd78d02e74f09094991cdcad8e7b0ac0f7c35"
+
+[[documents]]
+id = "nt_2_thessalonians"
+family = "new_testament"
+path = "raw/new_testament/2_thessalonians.txt"
+license = "public-domain"
+sha256 = "c1abf4887ae96ea21a9aff01f1d17f64ae6e489b2ea9c558b091ac372a6301ef"
+
+[[documents]]
+id = "nt_1_timothy"
+family = "new_testament"
+path = "raw/new_testament/1_timothy.txt"
+license = "public-domain"
+sha256 = "517be5fb15ce75d4373b296ef8f279509f36c05956b662e0eb8a3d8acd571dec"
+
+[[documents]]
+id = "nt_2_timothy"
+family = "new_testament"
+path = "raw/new_testament/2_timothy.txt"
+license = "public-domain"
+sha256 = "7c5b4df81966620a677b2ee854fada87cfedf9374146128097707a8ebc5deb3e"
+
+[[documents]]
+id = "nt_titus"
+family = "new_testament"
+path = "raw/new_testament/titus.txt"
+license = "public-domain"
+sha256 = "f95994f5d3f521207851bfcc91bc747bf890f3486087abe848b8981952b73ee6"
+
+[[documents]]
+id = "nt_philemon"
+family = "new_testament"
+path = "raw/new_testament/philemon.txt"
+license = "public-domain"
+sha256 = "2ba0e240fd5af76116b76aa18608680d3fc02a94e3e6a2f6731e00387d92d7f9"
+
+[[documents]]
+id = "nt_hebrews"
+family = "new_testament"
+path = "raw/new_testament/hebrews.txt"
+license = "public-domain"
+sha256 = "2948b94a6fa1f7e4ec7e53019d1198610736e0ffd5aee25e57de93f67c08df25"
+
+[[documents]]
+id = "nt_james"
+family = "new_testament"
+path = "raw/new_testament/james.txt"
+license = "public-domain"
+sha256 = "63f14af3e8c715981f2e5e9e94f9421eea66fccaf25c4d48ebedd31cdf859aff"
+
+[[documents]]
+id = "nt_1_peter"
+family = "new_testament"
+path = "raw/new_testament/1_peter.txt"
+license = "public-domain"
+sha256 = "dd7381277339856d78f811d42fef77246ea2eb957b30979793a17319d3c002d0"
+
+[[documents]]
+id = "nt_2_peter"
+family = "new_testament"
+path = "raw/new_testament/2_peter.txt"
+license = "public-domain"
+sha256 = "6dd2ef5b41e1724d76c8feb98083d27f0b007cc99e03577ecb202d97f1de82c4"
+
+[[documents]]
+id = "nt_1_john"
+family = "new_testament"
+path = "raw/new_testament/1_john.txt"
+license = "public-domain"
+sha256 = "eaf226e3c99c3056172c3d73e2102a8613f65d2425d319c99cd492d87d7fb319"
+
+[[documents]]
+id = "nt_2_john"
+family = "new_testament"
+path = "raw/new_testament/2_john.txt"
+license = "public-domain"
+sha256 = "62155f2460832bc738f3588407d81cf9e5fef5fc97b7490365926b0da792f776"
+
+[[documents]]
+id = "nt_3_john"
+family = "new_testament"
+path = "raw/new_testament/3_john.txt"
+license = "public-domain"
+sha256 = "b739ffc5f48fe3606c093fb8af5a804be8371c75ec46f4c3c65feb8edbee6e31"
+
+[[documents]]
+id = "nt_jude"
+family = "new_testament"
+path = "raw/new_testament/jude.txt"
+license = "public-domain"
+sha256 = "cc3874e3f7e32c55f10d7c2c822f834d34fc6cdba265511d72ce004b00df1ce7"
+
+[[documents]]
+id = "nt_revelation"
+family = "new_testament"
+path = "raw/new_testament/revelation.txt"
+license = "public-domain"
+sha256 = "45733c57c2bf4b3c2e72670b2b902db87e260cc1fe4046b22c595f34eb379b15"
+
+[[documents]]
+id = "quran_001"
+family = "quran"
+path = "raw/quran/001.txt"
+license = "public-domain"
+sha256 = "9b9ff88e0eb12aa885503fd9da2c3e759ebf22bf10462b0f6088dec3158094dc"
+
+[[documents]]
+id = "quran_002"
+family = "quran"
+path = "raw/quran/002.txt"
+license = "public-domain"
+sha256 = "049640119e000f11db94af55daaa353515249fc84dfed203ed404c3bdb252e27"
+
+[[documents]]
+id = "quran_003"
+family = "quran"
+path = "raw/quran/003.txt"
+license = "public-domain"
+sha256 = "2a447933494d7222e2010a7311f2045c9530dcdab878492639ea7932c0a13519"
+
+[[documents]]
+id = "quran_004"
+family = "quran"
+path = "raw/quran/004.txt"
+license = "public-domain"
+sha256 = "15929cd73a88b08fa531130c9287b54d2b01abcc85bbcd542df89a10ec8f2908"
+
+[[documents]]
+id = "quran_005"
+family = "quran"
+path = "raw/quran/005.txt"
+license = "public-domain"
+sha256 = "2842ed31b7c1947b388c2f1dd2b2cc073f8e8025ea95361a552922043bcfa707"
+
+[[documents]]
+id = "quran_006"
+family = "quran"
+path = "raw/quran/006.txt"
+license = "public-domain"
+sha256 = "47fc287d752fd33a802259013eafe7ab40f87dc6c9e1ff20af5a2d1a3501c9eb"
+
+[[documents]]
+id = "quran_007"
+family = "quran"
+path = "raw/quran/007.txt"
+license = "public-domain"
+sha256 = "b13286e708d27be1d8d76e3e0859384a06db91e057e382b95cd6cc8e821e7972"
+
+[[documents]]
+id = "quran_008"
+family = "quran"
+path = "raw/quran/008.txt"
+license = "public-domain"
+sha256 = "bd3934d1539b24d364e8fffc3c650910f77db03c82f360f61e1d40464f7fea10"
+
+[[documents]]
+id = "quran_009"
+family = "quran"
+path = "raw/quran/009.txt"
+license = "public-domain"
+sha256 = "480e12b752c4f0be8e3541f90974c9414db9be9f4a9371d70f27eebd1523de2d"
+
+[[documents]]
+id = "quran_010"
+family = "quran"
+path = "raw/quran/010.txt"
+license = "public-domain"
+sha256 = "83fcaab78cea86ecf7102e976fea99bd36ee9ba3f0666e807204dbf2de281971"
+
+[[documents]]
+id = "quran_011"
+family = "quran"
+path = "raw/quran/011.txt"
+license = "public-domain"
+sha256 = "2c4af0ba1e9598c251b7b38bcbd1b6e8487e3f380935d12ddb4c2e7dacba7e01"
+
+[[documents]]
+id = "quran_012"
+family = "quran"
+path = "raw/quran/012.txt"
+license = "public-domain"
+sha256 = "ecc5777721f477cf0b5c7be59fe09e92c9b07813839b0cab3e7be711ef3ab787"
+
+[[documents]]
+id = "quran_013"
+family = "quran"
+path = "raw/quran/013.txt"
+license = "public-domain"
+sha256 = "66f8c3867ab1fa96fa694bc1db5ed969101b6662130a4ae101342eb89319af97"
+
+[[documents]]
+id = "quran_014"
+family = "quran"
+path = "raw/quran/014.txt"
+license = "public-domain"
+sha256 = "6fd17bef2a458f5995f11be38a165f3429f9381eb98521a2488e0f11a64471c6"
+
+[[documents]]
+id = "quran_015"
+family = "quran"
+path = "raw/quran/015.txt"
+license = "public-domain"
+sha256 = "99d998811665c51d3bd2c87ffd01fa9f0f015e0c61228a2ccea31990c0b483bb"
+
+[[documents]]
+id = "quran_016"
+family = "quran"
+path = "raw/quran/016.txt"
+license = "public-domain"
+sha256 = "fa980935511261d4fe011335b3648202bf8d5417a1afc83c3a734957aa286635"
+
+[[documents]]
+id = "quran_017"
+family = "quran"
+path = "raw/quran/017.txt"
+license = "public-domain"
+sha256 = "9b70146d49f949042abc9955113d1d6fdd8964d50ca577026c39f97e3ac79abf"
+
+[[documents]]
+id = "quran_018"
+family = "quran"
+path = "raw/quran/018.txt"
+license = "public-domain"
+sha256 = "074843563dacdb2b013ff673e6739520ae19e7fac90fe798f8de75f96311971f"
+
+[[documents]]
+id = "quran_019"
+family = "quran"
+path = "raw/quran/019.txt"
+license = "public-domain"
+sha256 = "f28196b706b85e1eeab0244b5c4940b0bf2a6cfcd8d9bfd2ba5826c2be4ed242"
+
+[[documents]]
+id = "quran_020"
+family = "quran"
+path = "raw/quran/020.txt"
+license = "public-domain"
+sha256 = "74063b419344b24137f6e5dc6befb325d41a98c4243ba492c52f34d873dbe77c"
+
+[[documents]]
+id = "quran_021"
+family = "quran"
+path = "raw/quran/021.txt"
+license = "public-domain"
+sha256 = "9c5814e91b3d58f12d1fd23d774459d010fb77d618e1902861cfca2d4617d729"
+
+[[documents]]
+id = "quran_022"
+family = "quran"
+path = "raw/quran/022.txt"
+license = "public-domain"
+sha256 = "512443961a6c32235d2db68f808fce36c51e480a7ec195e5ea7fcf97e77cab84"
+
+[[documents]]
+id = "quran_023"
+family = "quran"
+path = "raw/quran/023.txt"
+license = "public-domain"
+sha256 = "bc5f436cc823e4101c2f39321c48d44692bce4c3a67daf6f2e8bf3f5d656292c"
+
+[[documents]]
+id = "quran_024"
+family = "quran"
+path = "raw/quran/024.txt"
+license = "public-domain"
+sha256 = "f02ba2eda26a0b47190adfe7864a5edfcdceec3809d6366efbf6afc4e8904215"
+
+[[documents]]
+id = "quran_025"
+family = "quran"
+path = "raw/quran/025.txt"
+license = "public-domain"
+sha256 = "ee8b3831a247c3c6ac84c52b5c0cd8e6a61a60afd6ee465568782be883080a21"
+
+[[documents]]
+id = "quran_026"
+family = "quran"
+path = "raw/quran/026.txt"
+license = "public-domain"
+sha256 = "882d2300a7e73eb6fde20ed0f4c9aaa4d24e8d242dc9688d7d944d5e93f1c348"
+
+[[documents]]
+id = "quran_027"
+family = "quran"
+path = "raw/quran/027.txt"
+license = "public-domain"
+sha256 = "3f080ba680230b66f1ee81736a9d2a0ae6ba487a7281fdb95049cfebd746d8c6"
+
+[[documents]]
+id = "quran_028"
+family = "quran"
+path = "raw/quran/028.txt"
+license = "public-domain"
+sha256 = "afba6ec8f12977aba534041f6c5d9631314c5f649eecc43fc21397891f015933"
+
+[[documents]]
+id = "quran_029"
+family = "quran"
+path = "raw/quran/029.txt"
+license = "public-domain"
+sha256 = "ed5c81e55d33898fd853f3baf636b7c6ca34f8558a6562a1f0e67c5a3da9cd6c"
+
+[[documents]]
+id = "quran_030"
+family = "quran"
+path = "raw/quran/030.txt"
+license = "public-domain"
+sha256 = "259925fcd2c11c282cb25ce35f4a5ecd032e55e23bcd29b641eb3709fc3877e2"
+
+[[documents]]
+id = "quran_031"
+family = "quran"
+path = "raw/quran/031.txt"
+license = "public-domain"
+sha256 = "4cc8a27823a4feef6874ac678d204472f25d1e65898d30f6ec8c0ad7ea62d429"
+
+[[documents]]
+id = "quran_032"
+family = "quran"
+path = "raw/quran/032.txt"
+license = "public-domain"
+sha256 = "0694b24d6c76ebef8deec1186779d05fe4d3e540f4e24b21d28b587b5fe3cf9d"
+
+[[documents]]
+id = "quran_033"
+family = "quran"
+path = "raw/quran/033.txt"
+license = "public-domain"
+sha256 = "1e610ef6738bf0c9f1a7b28e1aaae436b6d3e09375e75175efe1a325d486f27c"
+
+[[documents]]
+id = "quran_034"
+family = "quran"
+path = "raw/quran/034.txt"
+license = "public-domain"
+sha256 = "08a1b8b98c153068b9cb7312fa9ba385d872c6096500033dcdfe78b1e6fb7c55"
+
+[[documents]]
+id = "quran_035"
+family = "quran"
+path = "raw/quran/035.txt"
+license = "public-domain"
+sha256 = "d04ce504df7dbf8cebcdb45199f4a6ef7799d135020290917243f23a0699d931"
+
+[[documents]]
+id = "quran_036"
+family = "quran"
+path = "raw/quran/036.txt"
+license = "public-domain"
+sha256 = "4fcd7dea876d9288a558a4d1a44d8d5b6fc8748cf9cb5bbc75c03eca5cd7f621"
+
+[[documents]]
+id = "quran_037"
+family = "quran"
+path = "raw/quran/037.txt"
+license = "public-domain"
+sha256 = "2f5227aeb610a9517559cba96682f7e141f8c06cd714756ae83e3fe07f461f97"
+
+[[documents]]
+id = "quran_038"
+family = "quran"
+path = "raw/quran/038.txt"
+license = "public-domain"
+sha256 = "8aab026703639eaa1ba58a19638519e9fd63a98cd77b1f7526f4b968d5ce668a"
+
+[[documents]]
+id = "quran_039"
+family = "quran"
+path = "raw/quran/039.txt"
+license = "public-domain"
+sha256 = "fa6c0b11baff38e8de1ad5955a43e8ebef6a08c517b93c5521ac9739870fe54a"
+
+[[documents]]
+id = "quran_040"
+family = "quran"
+path = "raw/quran/040.txt"
+license = "public-domain"
+sha256 = "c5e2409ab996b6d3464f8fca5974f90b9468a8b06cf06308438abdc9986f5acf"
+
+[[documents]]
+id = "quran_041"
+family = "quran"
+path = "raw/quran/041.txt"
+license = "public-domain"
+sha256 = "5229cedc3cdde4e3a370f5d14cee159a6a54340eaac7812d3e0a02c16c11a6df"
+
+[[documents]]
+id = "quran_042"
+family = "quran"
+path = "raw/quran/042.txt"
+license = "public-domain"
+sha256 = "66cce12ad8d93ae5106cbd2be8fd9ced1572edb7c95a66cc5ff8050d350f77e6"
+
+[[documents]]
+id = "quran_043"
+family = "quran"
+path = "raw/quran/043.txt"
+license = "public-domain"
+sha256 = "62474a7873cf83fc65648b44e83f487993f52b9b38941556814e4907fcc13a24"
+
+[[documents]]
+id = "quran_044"
+family = "quran"
+path = "raw/quran/044.txt"
+license = "public-domain"
+sha256 = "f01a85884d0e6141cbad807cf33936e61fe0430d67710c3e9a1d28f6e4aaebbe"
+
+[[documents]]
+id = "quran_045"
+family = "quran"
+path = "raw/quran/045.txt"
+license = "public-domain"
+sha256 = "19c6ffbc2e91954539c9fe75bee592d55b73bac869b25b1af0fa52356bed258c"
+
+[[documents]]
+id = "quran_046"
+family = "quran"
+path = "raw/quran/046.txt"
+license = "public-domain"
+sha256 = "f199401b27cc27ad7589a5d6293ff6bfc5a547502e18fe826ee1b465bb4cd54a"
+
+[[documents]]
+id = "quran_047"
+family = "quran"
+path = "raw/quran/047.txt"
+license = "public-domain"
+sha256 = "06c6ba22509166bedad5aebaf4da9913e9584446af29fc9db1d88e4914ccbd2e"
+
+[[documents]]
+id = "quran_048"
+family = "quran"
+path = "raw/quran/048.txt"
+license = "public-domain"
+sha256 = "0423ed851439fa73ab6e1e42d482e67c720be48755bb9818d662f405c275e1f3"
+
+[[documents]]
+id = "quran_049"
+family = "quran"
+path = "raw/quran/049.txt"
+license = "public-domain"
+sha256 = "26045d732a756078a421212a6eb25109a73af3400101079fa688c2f653114847"
+
+[[documents]]
+id = "quran_050"
+family = "quran"
+path = "raw/quran/050.txt"
+license = "public-domain"
+sha256 = "d3ea7a851f47bcba6a81c756690d8202676f417dc4530f220876a38ee370a370"
+
+[[documents]]
+id = "quran_051"
+family = "quran"
+path = "raw/quran/051.txt"
+license = "public-domain"
+sha256 = "93dcffe0d6bd8e183d8271fedfd29912098aac79dffbf6493288ddb74fa3209b"
+
+[[documents]]
+id = "quran_052"
+family = "quran"
+path = "raw/quran/052.txt"
+license = "public-domain"
+sha256 = "98f241c4258511e1d1fa3921d829e8f6aba13ce1774536b09d129bb81c47f51c"
+
+[[documents]]
+id = "quran_053"
+family = "quran"
+path = "raw/quran/053.txt"
+license = "public-domain"
+sha256 = "f1923c9d8d394bb02225fbc2d4446a6047f23ef5f536a48020252e0c81388845"
+
+[[documents]]
+id = "quran_054"
+family = "quran"
+path = "raw/quran/054.txt"
+license = "public-domain"
+sha256 = "3c079dca2160443cd8933bbda7c1e25202c7f2672c27c6307449d775c2dfaaf6"
+
+[[documents]]
+id = "quran_055"
+family = "quran"
+path = "raw/quran/055.txt"
+license = "public-domain"
+sha256 = "7adec3cbcb2d21eac41b579f755c1aa99c3c8494b04d6bd94ff4caa48a196520"
+
+[[documents]]
+id = "quran_056"
+family = "quran"
+path = "raw/quran/056.txt"
+license = "public-domain"
+sha256 = "771a2f2310476a7488bd040d1d2ae48ab13fe7c42c54e019f0e86b551b64bd37"
+
+[[documents]]
+id = "quran_057"
+family = "quran"
+path = "raw/quran/057.txt"
+license = "public-domain"
+sha256 = "2ae43d4ff4c59e155bda9698f6098a3f1d1c117442616d8cfaab2fac33afe262"
+
+[[documents]]
+id = "quran_058"
+family = "quran"
+path = "raw/quran/058.txt"
+license = "public-domain"
+sha256 = "383588eba7cce1f2d00f814e4ee2bf1351cd2ceba0ae7da912d1c3c6dd46613f"
+
+[[documents]]
+id = "quran_059"
+family = "quran"
+path = "raw/quran/059.txt"
+license = "public-domain"
+sha256 = "cac98c60673db34eaff65e536e1ac3e5af8810961ea1fa99e35c0978b14e1a8e"
+
+[[documents]]
+id = "quran_060"
+family = "quran"
+path = "raw/quran/060.txt"
+license = "public-domain"
+sha256 = "1b4b7fdead1ec6bc8f169c2730eaabb0ce6bbbe71589b98888c017f91f9aef9b"
+
+[[documents]]
+id = "quran_061"
+family = "quran"
+path = "raw/quran/061.txt"
+license = "public-domain"
+sha256 = "2a051d307cf115e5b1b7e087c269d0465d5a968b9d4a4dc7a2a95b16df559d45"
+
+[[documents]]
+id = "quran_062"
+family = "quran"
+path = "raw/quran/062.txt"
+license = "public-domain"
+sha256 = "06a343a181cc54cf1e5a2568e2ac5426463485d61b2c7a6a8dddec18007d3b82"
+
+[[documents]]
+id = "quran_063"
+family = "quran"
+path = "raw/quran/063.txt"
+license = "public-domain"
+sha256 = "76fb0cef1cf4d02b8b8c567558714fce61535e7488d9bf8200a9d0d9596111d6"
+
+[[documents]]
+id = "quran_064"
+family = "quran"
+path = "raw/quran/064.txt"
+license = "public-domain"
+sha256 = "ffb8f21bdcd303bac297b13bfa08d2fcff6bb5732f0659136655354eaef7046f"
+
+[[documents]]
+id = "quran_065"
+family = "quran"
+path = "raw/quran/065.txt"
+license = "public-domain"
+sha256 = "48fded9713765e1f49d81abd76af68734d0a8ec25d35a317cea75d333d4c3a9e"
+
+[[documents]]
+id = "quran_066"
+family = "quran"
+path = "raw/quran/066.txt"
+license = "public-domain"
+sha256 = "5e17bf8e9a5d7d635c9ad4b0a4d2655383dc8c1c39660424f463653f7c216568"
+
+[[documents]]
+id = "quran_067"
+family = "quran"
+path = "raw/quran/067.txt"
+license = "public-domain"
+sha256 = "47d984bbe0659846ad76be972db26fd7c1dfd30df5c19e8e38b4aef8422a791d"
+
+[[documents]]
+id = "quran_068"
+family = "quran"
+path = "raw/quran/068.txt"
+license = "public-domain"
+sha256 = "8c38feceb7c41433af7b0495ce00d8c068b29f3eda6a3e561a006bf60db20a2d"
+
+[[documents]]
+id = "quran_069"
+family = "quran"
+path = "raw/quran/069.txt"
+license = "public-domain"
+sha256 = "31aceb8699d9171f9f249bd32b2543a9246eefde61328b27d81544240a72f361"
+
+[[documents]]
+id = "quran_070"
+family = "quran"
+path = "raw/quran/070.txt"
+license = "public-domain"
+sha256 = "74ae6d8d27838a23505a99f5ed5cc3f0402ae4ef67910454255ac72eed2fe1e4"
+
+[[documents]]
+id = "quran_071"
+family = "quran"
+path = "raw/quran/071.txt"
+license = "public-domain"
+sha256 = "018312d38ee050f730b5bdc6876622e3968f9274aefe3a962b469d133343ed3e"
+
+[[documents]]
+id = "quran_072"
+family = "quran"
+path = "raw/quran/072.txt"
+license = "public-domain"
+sha256 = "54ace5438f2165af451911d8e884e975c39372e649dbe0b79b60b29d93298549"
+
+[[documents]]
+id = "quran_073"
+family = "quran"
+path = "raw/quran/073.txt"
+license = "public-domain"
+sha256 = "783aaa0a00c2808b99e483cad7f64ab67e80a4a765b38000e8515071cb2e3c55"
+
+[[documents]]
+id = "quran_074"
+family = "quran"
+path = "raw/quran/074.txt"
+license = "public-domain"
+sha256 = "d3b0838af8cf47337e492f3f5c4112448b14cdb06b90d486fada102a0cd7d324"
+
+[[documents]]
+id = "quran_075"
+family = "quran"
+path = "raw/quran/075.txt"
+license = "public-domain"
+sha256 = "f7dde7d6f7be533d8b950336c0557c1b4d52a0ed0951311108dff8924140a50c"
+
+[[documents]]
+id = "quran_076"
+family = "quran"
+path = "raw/quran/076.txt"
+license = "public-domain"
+sha256 = "e141b1532b1262ccd2f96e662fb9f7a0a2e09904649adbc4342df50fdf209652"
+
+[[documents]]
+id = "quran_077"
+family = "quran"
+path = "raw/quran/077.txt"
+license = "public-domain"
+sha256 = "5fae34b707a575b2ffb52a8915eada303ff43cbb92bfc3e7e482b3bab81c196c"
+
+[[documents]]
+id = "quran_078"
+family = "quran"
+path = "raw/quran/078.txt"
+license = "public-domain"
+sha256 = "e81e39185ce8837714e4ee19c681d4d71f7e7ab14fee3dd46a5ed4ca7d8c48d4"
+
+[[documents]]
+id = "quran_079"
+family = "quran"
+path = "raw/quran/079.txt"
+license = "public-domain"
+sha256 = "537eb9b5ec29c42760b16315cfe1ebab3974aada8db26cfc13c7fe86bd19396f"
+
+[[documents]]
+id = "quran_080"
+family = "quran"
+path = "raw/quran/080.txt"
+license = "public-domain"
+sha256 = "5efa7ebe04bd7a588313ce5958c05926fd24500b82976d64993ad6878266320b"
+
+[[documents]]
+id = "quran_081"
+family = "quran"
+path = "raw/quran/081.txt"
+license = "public-domain"
+sha256 = "7a0cca7fbb9317a32fde080695658a665e6ac9fb6c7910d458b8b0e38ce33b59"
+
+[[documents]]
+id = "quran_082"
+family = "quran"
+path = "raw/quran/082.txt"
+license = "public-domain"
+sha256 = "99933c3003ff013b1a8a0ab9dfd34fe9a6c2265c2a734a0f0ab98d7596877f57"
+
+[[documents]]
+id = "quran_083"
+family = "quran"
+path = "raw/quran/083.txt"
+license = "public-domain"
+sha256 = "c33aacb28e710c21625721556f08b0d60ba579b0d94d717c5817bd572c5a0584"
+
+[[documents]]
+id = "quran_084"
+family = "quran"
+path = "raw/quran/084.txt"
+license = "public-domain"
+sha256 = "5c52f2b90e4814c91530688c4749afab0aa2833867c1cd22a8756fe3fc0898ed"
+
+[[documents]]
+id = "quran_085"
+family = "quran"
+path = "raw/quran/085.txt"
+license = "public-domain"
+sha256 = "d8e5198652b2eda6a0085929afe16872b075191b776180cf80ccf965aa2a58ee"
+
+[[documents]]
+id = "quran_086"
+family = "quran"
+path = "raw/quran/086.txt"
+license = "public-domain"
+sha256 = "9a850397417b23c73e2d84d122fca9c5458e428df64dd3fed359161b3a6f7828"
+
+[[documents]]
+id = "quran_087"
+family = "quran"
+path = "raw/quran/087.txt"
+license = "public-domain"
+sha256 = "e035229f49c141ee3d4b637b25fbac9cf7bccf115e6d977c10f18ebd0f30f5f0"
+
+[[documents]]
+id = "quran_088"
+family = "quran"
+path = "raw/quran/088.txt"
+license = "public-domain"
+sha256 = "29719bee6c76a813588fe0e6910ad044c238155baffbc9c0c5e9a2f579ac1532"
+
+[[documents]]
+id = "quran_089"
+family = "quran"
+path = "raw/quran/089.txt"
+license = "public-domain"
+sha256 = "60f8b8be8e5b9cc846f0b12d69ff3c185ce66733cb83c519a41939a4e6586c43"
+
+[[documents]]
+id = "quran_090"
+family = "quran"
+path = "raw/quran/090.txt"
+license = "public-domain"
+sha256 = "515cbeec189e86fbdf1c84f1f84967841b0ee7f706dc580e3d1afae78df50de0"
+
+[[documents]]
+id = "quran_091"
+family = "quran"
+path = "raw/quran/091.txt"
+license = "public-domain"
+sha256 = "4f3d545e631b0278bbc645e3292272d1fb2e0e66731a11a13369a17e27c97118"
+
+[[documents]]
+id = "quran_092"
+family = "quran"
+path = "raw/quran/092.txt"
+license = "public-domain"
+sha256 = "66a4bb1ba5b5c730429ecd65c467c08a0d280f9165844c1b93533e6f6b6579db"
+
+[[documents]]
+id = "quran_093"
+family = "quran"
+path = "raw/quran/093.txt"
+license = "public-domain"
+sha256 = "9f9f79865507697b92040a76ca416e180515b61b86fabb0d24837f770ebdd7d2"
+
+[[documents]]
+id = "quran_094"
+family = "quran"
+path = "raw/quran/094.txt"
+license = "public-domain"
+sha256 = "ca99ba7b54eef33731602e04adc19cc4c2952788cf66403976fac30e2a627760"
+
+[[documents]]
+id = "quran_095"
+family = "quran"
+path = "raw/quran/095.txt"
+license = "public-domain"
+sha256 = "9ccb82f35e12ef26ab94bba4df4d03cc7f90835dbd907f1a8ca7ef8bfce03c16"
+
+[[documents]]
+id = "quran_096"
+family = "quran"
+path = "raw/quran/096.txt"
+license = "public-domain"
+sha256 = "3c9cabd75b9c3097675a80f70b681178c8ae091f67c4602b4feb0d566a2bb336"
+
+[[documents]]
+id = "quran_097"
+family = "quran"
+path = "raw/quran/097.txt"
+license = "public-domain"
+sha256 = "a1c944d43d21fcbcdf9ae6022d97a31be849f5ae562aa9d3b345b65b02e6752a"
+
+[[documents]]
+id = "quran_098"
+family = "quran"
+path = "raw/quran/098.txt"
+license = "public-domain"
+sha256 = "de51b8b29e11c034de3e4d4ca32fc1fca137e4e6dd11b74523a5afd2e8e20144"
+
+[[documents]]
+id = "quran_099"
+family = "quran"
+path = "raw/quran/099.txt"
+license = "public-domain"
+sha256 = "169c3715256aac0f529f0c6d0089eac5dc7e4096bf6fcce58289b8aeddc0c5e2"
+
+[[documents]]
+id = "quran_100"
+family = "quran"
+path = "raw/quran/100.txt"
+license = "public-domain"
+sha256 = "11ee2db5f21a1ef1d064eea4829f3a7278d8b111038e9a84e3aa14b77e64e3fd"
+
+[[documents]]
+id = "quran_101"
+family = "quran"
+path = "raw/quran/101.txt"
+license = "public-domain"
+sha256 = "aef5ef60f1641320b3fb0171a983647ac83131efbd01d8316626e9284fe67fa4"
+
+[[documents]]
+id = "quran_102"
+family = "quran"
+path = "raw/quran/102.txt"
+license = "public-domain"
+sha256 = "19e4968fac7e0b91eb8afcbb8ec964ce54fcedfefb3cbf2cb1fe8817a8bcb3e3"
+
+[[documents]]
+id = "quran_103"
+family = "quran"
+path = "raw/quran/103.txt"
+license = "public-domain"
+sha256 = "139780a5fc977180f41d6aa12c6d9ebbbea0712fd581adb864c492c81115dd16"
+
+[[documents]]
+id = "quran_104"
+family = "quran"
+path = "raw/quran/104.txt"
+license = "public-domain"
+sha256 = "6139577476ff1e2f764ca93c251940f57697c81f169e33559e8b54275b614c70"
+
+[[documents]]
+id = "quran_105"
+family = "quran"
+path = "raw/quran/105.txt"
+license = "public-domain"
+sha256 = "3857941560667ae225a5e4b0d2662ed3dc18a5c1c82c3bfd3120b8b6bb0f5a6b"
+
+[[documents]]
+id = "quran_106"
+family = "quran"
+path = "raw/quran/106.txt"
+license = "public-domain"
+sha256 = "d5944c07ec392a3f4b2ccdbe7c9d996a887fbbf07f370c7a9dd23411633ec989"
+
+[[documents]]
+id = "quran_107"
+family = "quran"
+path = "raw/quran/107.txt"
+license = "public-domain"
+sha256 = "f7eb3bab07a699b3e5b2277997c75e45ebb55505fc08b62dcca58ed12728a3e1"
+
+[[documents]]
+id = "quran_108"
+family = "quran"
+path = "raw/quran/108.txt"
+license = "public-domain"
+sha256 = "bb26b83e9a5c94ccb70ff2dab7c72c5fd799b45f23e5fb153de0f17ba3251196"
+
+[[documents]]
+id = "quran_109"
+family = "quran"
+path = "raw/quran/109.txt"
+license = "public-domain"
+sha256 = "69d973ee8c92767828b41932ddb90b7ceb6a8e6712aafbb91ba66a060000e7be"
+
+[[documents]]
+id = "quran_110"
+family = "quran"
+path = "raw/quran/110.txt"
+license = "public-domain"
+sha256 = "931cfde53c7d82c8a5389c6551ceaaa6a9a474dc25621e6e33bf977f7864243b"
+
+[[documents]]
+id = "quran_111"
+family = "quran"
+path = "raw/quran/111.txt"
+license = "public-domain"
+sha256 = "7acd24730b81cc157f20025b189873e19f704df22a09d6d13444228c8d6cd33a"
+
+[[documents]]
+id = "quran_112"
+family = "quran"
+path = "raw/quran/112.txt"
+license = "public-domain"
+sha256 = "b8647492ea778e0f8ea669fd1df793e9db430747712d056ca3b7a77324f64475"
+
+[[documents]]
+id = "quran_113"
+family = "quran"
+path = "raw/quran/113.txt"
+license = "public-domain"
+sha256 = "21ee0e9d90c26e30f0ad3ce4dee34c820ae2c844bab2f8998bfdf283e5856c08"
+
+[[documents]]
+id = "quran_114"
+family = "quran"
+path = "raw/quran/114.txt"
+license = "public-domain"
+sha256 = "79502e65c30e9de8ea0fabf1d57b435f63acf62fb42dd08d032bf8601c62f451"

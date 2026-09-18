@@ -22,6 +22,7 @@ from scripture_lm.data.dataset import ScriptureChunkDataset
 from scripture_lm.evaluation import compute_bpc, compute_perplexity
 from scripture_lm.model import TransformerConfig, TransformerLM
 from scripture_lm.tokenization import BaseTokenizer, BPETokenizer, CharacterTokenizer
+from scripture_lm.tokenization.base import tokenizer_metadata_path
 
 console = Console()
 
@@ -97,9 +98,11 @@ def evaluate_run(
     if (run / "tokenizer_metadata.json").is_file():
         tok_m = json.loads((run / "tokenizer_metadata.json").read_text(encoding="utf-8"))
         vocab_size = int(tok_m.get("vocab_size", 0))
-    elif (Path("artifacts/tokenizers") / f"{tok_type}_metadata.json").is_file():
+    elif tokenizer_metadata_path(Path("artifacts/tokenizers"), tok_type).is_file():
         tok_m = json.loads(
-            (Path("artifacts/tokenizers") / f"{tok_type}_metadata.json").read_text(encoding="utf-8")
+            tokenizer_metadata_path(Path("artifacts/tokenizers"), tok_type).read_text(
+                encoding="utf-8"
+            )
         )
         vocab_size = int(tok_m.get("vocab_size", 0))
 
@@ -176,7 +179,7 @@ def evaluate_run(
 
     tok_meta_path = run / "tokenizer_metadata.json"
     if not tok_meta_path.is_file():
-        tok_meta_path = Path("artifacts/tokenizers") / f"{tok_type}_metadata.json"
+        tok_meta_path = tokenizer_metadata_path(Path("artifacts/tokenizers"), tok_type)
     if tok_meta_path.is_file():
         tok_meta = json.loads(tok_meta_path.read_text(encoding="utf-8"))
         tok_hash = tok_meta.get("tokenizer_artifact_sha256", "")

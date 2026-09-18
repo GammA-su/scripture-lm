@@ -13,6 +13,15 @@ from scripture_lm.corpus.manifest import compute_file_sha256
 from scripture_lm.corpus.normalize import CorpusLock
 from scripture_lm.corpus.split import SplitManifest
 
+
+def tokenizer_metadata_path(artifacts_dir: Path, tokenizer_type: str) -> Path:
+    """Resolve metadata using the tokenizer writers' BPE/CHAR artifact names."""
+    name = "char" if tokenizer_type in {"char", "character"} else tokenizer_type
+    canonical = artifacts_dir / f"{name}_metadata.json"
+    legacy = artifacts_dir / f"{tokenizer_type}_metadata.json"
+    return canonical if canonical.is_file() or not legacy.is_file() else legacy
+
+
 PAD_TOKEN = "<pad>"
 BOS_TOKEN = "<bos>"
 EOS_TOKEN = "<eos>"

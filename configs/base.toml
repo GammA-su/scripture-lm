@@ -19,7 +19,7 @@ sampling_mode = "natural"
 sampling_alpha = 0.5
 
 [training]
-seed = 1337
+seed = 777
 learning_rate = 0.0003
 min_learning_rate = 0.00003
 weight_decay = 0.10

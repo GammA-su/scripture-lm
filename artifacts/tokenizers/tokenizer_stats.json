@@ -1,0 +1,269 @@
+{
+  "bpe": {
+    "tokenizer_type": "bpe",
+    "tokenizer_artifact_sha256": "3bc0c2019cfe9d4571a2859800b3d59b00483e00caeef15c509a07d2f7b16a13",
+    "corpus_fingerprint": "46fa8d051a5fe80398d6495e587e05d2ca4ad65e76a70f016d65c4ca3a31dfb4",
+    "normalization_fingerprint": "8e40266f743bd254a430e3ca8de84e600cce23784963a022173f03ac94333d64",
+    "split_manifest_hash": "2b8a24f6337b452d384b1e498635ec25299590a6a606be5a3c0d22b3f889aa43",
+    "vocab_size": 4096,
+    "training_characters": 4346053,
+    "training_bytes": 4347684,
+    "training_tokens": 1080059,
+    "characters_per_token": 4.023903323799903,
+    "bytes_per_token": 4.025413426488738,
+    "learned_merge_count": 3836,
+    "top_tokens": [
+      {
+        "token": ",",
+        "id": 15,
+        "count": 64025
+      },
+      {
+        "token": "Ġthe",
+        "id": 262,
+        "count": 62422
+      },
+      {
+        "token": "Ġand",
+        "id": 271,
+        "count": 39174
+      },
+      {
+        "token": "Ġof",
+        "id": 272,
+        "count": 35234
+      },
+      {
+        "token": ".",
+        "id": 17,
+        "count": 26593
+      },
+      {
+        "token": ";",
+        "id": 30,
+        "count": 16721
+      },
+      {
+        "token": "Ġto",
+        "id": 295,
+        "count": 13630
+      },
+      {
+        "token": "Ġthat",
+        "id": 302,
+        "count": 13474
+      },
+      {
+        "token": "Ġin",
+        "id": 294,
+        "count": 12763
+      },
+      {
+        "token": "ĠAnd",
+        "id": 305,
+        "count": 12563
+      },
+      {
+        "token": "Ġa",
+        "id": 263,
+        "count": 9641
+      },
+      {
+        "token": "Ġunto",
+        "id": 324,
+        "count": 9241
+      },
+      {
+        "token": ":",
+        "id": 29,
+        "count": 9121
+      },
+      {
+        "token": "Ġis",
+        "id": 326,
+        "count": 8772
+      },
+      {
+        "token": "Ġthey",
+        "id": 331,
+        "count": 8327
+      },
+      {
+        "token": "Ġfor",
+        "id": 316,
+        "count": 8322
+      },
+      {
+        "token": "ĠI",
+        "id": 308,
+        "count": 8301
+      },
+      {
+        "token": "Ġhe",
+        "id": 325,
+        "count": 8137
+      },
+      {
+        "token": "Ġshall",
+        "id": 334,
+        "count": 7884
+      },
+      {
+        "token": "Ġthem",
+        "id": 335,
+        "count": 7406
+      }
+    ],
+    "unknown_characters": {
+      "validation": {
+        "unknown_occurrences": 0,
+        "unique_unknown_characters": 0,
+        "characters": []
+      },
+      "test": {
+        "unknown_occurrences": 0,
+        "unique_unknown_characters": 0,
+        "characters": []
+      }
+    }
+  },
+  "character": {
+    "tokenizer_type": "character",
+    "tokenizer_artifact_sha256": "138791102fe3a19ef71585e3d346d7c610e30e6cfc2aabb9affbe044ee7da8a5",
+    "corpus_fingerprint": "46fa8d051a5fe80398d6495e587e05d2ca4ad65e76a70f016d65c4ca3a31dfb4",
+    "normalization_fingerprint": "8e40266f743bd254a430e3ca8de84e600cce23784963a022173f03ac94333d64",
+    "split_manifest_hash": "2b8a24f6337b452d384b1e498635ec25299590a6a606be5a3c0d22b3f889aa43",
+    "vocab_size": 73,
+    "training_characters": 4346053,
+    "training_bytes": 4347684,
+    "training_tokens": 4346053,
+    "characters_per_token": 1.0,
+    "bytes_per_token": 1.0003752830441783,
+    "learned_merge_count": null,
+    "top_tokens": [
+      {
+        "token": " ",
+        "id": 5,
+        "count": 823751
+      },
+      {
+        "token": "e",
+        "id": 47,
+        "count": 428866
+      },
+      {
+        "token": "t",
+        "id": 62,
+        "count": 317502
+      },
+      {
+        "token": "h",
+        "id": 50,
+        "count": 283823
+      },
+      {
+        "token": "a",
+        "id": 43,
+        "count": 264856
+      },
+      {
+        "token": "o",
+        "id": 57,
+        "count": 248481
+      },
+      {
+        "token": "n",
+        "id": 56,
+        "count": 229864
+      },
+      {
+        "token": "i",
+        "id": 51,
+        "count": 189156
+      },
+      {
+        "token": "s",
+        "id": 61,
+        "count": 188191
+      },
+      {
+        "token": "r",
+        "id": 60,
+        "count": 174236
+      },
+      {
+        "token": "d",
+        "id": 46,
+        "count": 154178
+      },
+      {
+        "token": "l",
+        "id": 54,
+        "count": 127696
+      },
+      {
+        "token": "u",
+        "id": 63,
+        "count": 86704
+      },
+      {
+        "token": "f",
+        "id": 48,
+        "count": 85937
+      },
+      {
+        "token": "m",
+        "id": 55,
+        "count": 78149
+      },
+      {
+        "token": "w",
+        "id": 65,
+        "count": 67981
+      },
+      {
+        "token": ",",
+        "id": 12,
+        "count": 64283
+      },
+      {
+        "token": "y",
+        "id": 67,
+        "count": 62954
+      },
+      {
+        "token": "c",
+        "id": 45,
+        "count": 53782
+      },
+      {
+        "token": "g",
+        "id": 49,
+        "count": 50888
+      }
+    ],
+    "unknown_characters": {
+      "validation": {
+        "unknown_occurrences": 0,
+        "unique_unknown_characters": 0,
+        "characters": []
+      },
+      "test": {
+        "unknown_occurrences": 0,
+        "unique_unknown_characters": 0,
+        "characters": []
+      }
+    }
+  },
+  "comparison": {
+    "corpus_fingerprint": "46fa8d051a5fe80398d6495e587e05d2ca4ad65e76a70f016d65c4ca3a31dfb4",
+    "bpe_vocab_size": 4096,
+    "char_vocab_size": 73,
+    "bpe_characters_per_token": 4.023903323799903,
+    "char_characters_per_token": 1.0,
+    "bpe_training_tokens": 1080059,
+    "char_training_tokens": 4346053,
+    "compression_ratio_char_over_bpe": 4.023903323799903,
+    "status": "Compatible: both tokenizers trained on identical corpus split."
+  }
+}

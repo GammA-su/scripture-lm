@@ -13,6 +13,7 @@ dependencies = [
     "rich>=13.7.0",
     "tensorboard>=2.16.0",
     "safetensors>=0.4.0",
+    "triton-windows>=3.8,<3.9 ; sys_platform == 'win32'",
 ]
 
 [project.scripts]

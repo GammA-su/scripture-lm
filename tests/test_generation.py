@@ -186,6 +186,41 @@ def test_nonempty_cache_single_token_matches_full_forward() -> None:
         assert torch.allclose(f_out.logits[0, 0], full_logits[5], atol=1e-5)
 
 
+@pytest.mark.parametrize(
+    "device",
+    [
+        "cpu:0",
+        pytest.param(
+            "cuda",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA unavailable"),
+        ),
+        pytest.param(
+            "cuda:0",
+            marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA unavailable"),
+        ),
+    ],
+)
+def test_kv_cache_accepts_resolved_device(device: str) -> None:
+    """Device aliases must support both prompt prefill and incremental decoding."""
+    cache = KVCache(
+        num_layers=1,
+        batch_size=1,
+        heads=2,
+        head_dim=8,
+        max_context_length=4,
+        device=device,
+    )
+    keys = torch.randn((1, 2, 3, 8), device=device)
+    values = torch.randn_like(keys)
+    cache.update(0, keys[:, :, :2], values[:, :, :2])
+    cached_keys, cached_values = cache.update(0, keys[:, :, 2:], values[:, :, 2:])
+
+    assert cache.device == keys.device
+    assert cache.seq_len == 3
+    torch.testing.assert_close(cached_keys, keys)
+    torch.testing.assert_close(cached_values, values)
+
+
 def test_kv_cache_rejects_dtype_mismatch() -> None:
     """Verify KVCache rejects keys/values with mismatched dtype."""
     cache = KVCache(

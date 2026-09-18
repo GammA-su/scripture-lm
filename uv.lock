@@ -837,6 +837,7 @@ dependencies = [
     { name = "tensorboard" },
     { name = "tokenizers" },
     { name = "torch" },
+    { name = "triton-windows", marker = "sys_platform == 'win32'" },
     { name = "typer" },
 ]
 
@@ -856,6 +857,7 @@ requires-dist = [
     { name = "tensorboard", specifier = ">=2.16.0" },
     { name = "tokenizers", specifier = ">=0.19.0" },
     { name = "torch", specifier = ">=2.14,<2.15", index = "https://download.pytorch.org/whl/cu130" },
+    { name = "triton-windows", marker = "sys_platform == 'win32'", specifier = ">=3.8,<3.9" },
     { name = "typer", specifier = ">=0.12.0" },
 ]
 
@@ -998,6 +1000,15 @@ source = { registry = "https://pypi.org/simple" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/07/0f8cd8e8db0472334253efdaaab3d0819fea27aa99bf0e7f1aeea4ceb5ae/triton-3.8.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:a9c404c69ed4a39e8ec632eaf6b9fe058a060bf98979c177f6ef666f06bb8d50", size = 226474486, upload-time = "2026-08-28T16:08:18.29Z" },
     { url = "https://files.pythonhosted.org/packages/c1/09/b7012e5bfae67640f268aa584caa80fe1674f6b0da949046b679972c33e3/triton-3.8.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:e91ffa46d095b252248297292dd22bcbacd53a125a0c2eefbbbf74925a320bc3", size = 247972921, upload-time = "2026-08-28T15:55:53.157Z" },
+]
+
+[[package]]
+name = "triton-windows"
+version = "3.8.0.post28"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/e9/2eab61f500e118d83249b09b10722957f71e551c2b6502135bcfcb32512a/triton_windows-3.8.0.post28-cp312-cp312-win_amd64.whl", hash = "sha256:06435b922ebabbfcb3fb0f4b4b2257a2676dd39cc263a562be356bd58c15c9b8", size = 52810394, upload-time = "2026-08-29T12:13:59.864Z" },
+    { url = "https://files.pythonhosted.org/packages/35/96/9424cb34eb4581de2e2ccdd01266635478f15ecf1586c73e3d4383dd38f3/triton_windows-3.8.0.post28-cp312-cp312-win_arm64.whl", hash = "sha256:3512109cdc21734e51ca3a0f33f273d2970d95a25922d3306e10a8f7813e8e4d", size = 48390004, upload-time = "2026-08-29T12:14:08.7Z" },
 ]
 
 [[package]]

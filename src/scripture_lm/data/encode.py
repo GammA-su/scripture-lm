@@ -11,6 +11,7 @@ from scripture_lm.corpus.manifest import compute_file_sha256
 from scripture_lm.corpus.normalize import CorpusLock
 from scripture_lm.corpus.split import SplitManifest
 from scripture_lm.data.chunk_index import (
+    ENCODING_PROVENANCE_FILENAME,
     ChunkMetadata,
     EncodingProvenance,
     build_chunks_from_stream,
@@ -254,7 +255,7 @@ def encode_dataset(
         files=file_provenance,
     )
 
-    meta_file = encoded_dir / "encoding_provenance.json"
+    meta_file = encoded_dir / ENCODING_PROVENANCE_FILENAME
     with open(meta_file, "w", encoding="utf-8") as f:
         f.write(provenance.model_dump_json(indent=2))
 

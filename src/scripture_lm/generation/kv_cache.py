@@ -49,6 +49,9 @@ class KVCache:
             )
             for _ in range(num_layers)
         ]
+        # Resolve aliases such as "cuda" to the actual allocated device (e.g. "cuda:0").
+        if self.k_cache:
+            self.device = self.k_cache[0].device
 
     @property
     def seq_len(self) -> int:
